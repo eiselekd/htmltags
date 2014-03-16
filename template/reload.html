@@ -1,0 +1,18 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>Redirect page func2</title>
+<BODY onLoad="onloadPage()">
+anchor: ¶re_refid¶ fileid:¶re_refdfid¶<br>
+<a href="¶re_url¶" >goto ¶re_name¶ at ¶re_url¶</a>  
+</BODY>
+<script language="JavaScript1.3" type="text/javascript">
+function onloadPage() {
+  if (top["htmltagidx"]) {
+    top["htmltagidx"].path.reload("¶re_url¶",¶re_refdfid¶,¶re_refid¶);
+  } else {
+    top.main.location.href = "¶re_url¶";
+  }
+}
+</script>
+</HTML>

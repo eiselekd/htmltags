@@ -1,0 +1,311 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+  <head>
+    <link rel="stylesheet" type="text/css" href="¶re_jsfile¶.htmltag.css" />
+
+<script language="JavaScript1.3" type="text/javascript" >
+document.htmltagid = "htmltagidx";
+</script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile¶.htmltag.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile¶.htmltag.win.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile¶.htmltag.span.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile¶.htmltag.xml.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile¶.htmltag.ajax.js.php"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile¶.htmltag.path.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile¶.htmltag.hash.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile¶.htmltag.css.js"></script>
+    
+    <script language="JavaScript1.2" type="text/javascript">
+var p; // init by top.main
+
+var done = new Array();
+
+
+function setidx(pathdef,loc) {
+    if (done[loc])
+	return;
+    done[loc] = 1;
+    
+    p = pathdef;
+    if (p && p.fids && p.fids.length > 0) {
+        for (var i=0; i<p.fids.length; i++) {
+            var fid = p.fids[i];
+            var path = p.paths[fid];
+            var pid = path.p;
+            var divp = document.getElementById("TI"+pid);
+            var divtp = document.createElement("div");
+            var divtv = document.createElement("div");
+            var divti = document.createElement("div");
+	    divtp._loc = loc;		       
+            divtv._loc = loc;		       
+            divti._loc = loc;		       
+            divtp.id = "TP"+fid;                           
+            divtv.id = "TV"+fid;                           
+            divti.id = "TI"+fid;                           
+            divtp.className = "idxfillpre";                           
+            divtv.className = "selidx";                           
+            divti.className = "idx";
+            divtp.style.position="absolute";
+            divtp.style.visibility="hidden";
+            divtp.style.height = path.pre+"px";
+            var idx = path.idx;
+	    var _idx = idx.replace(/@/g,loc);
+	    
+            divtv.innerHTML = _idx; //path.idx;
+            divtp.innerHTML = '<span class="idx">&nbsp;</span>';
+            if (!(pid && divp)) {
+                divp = document.body;
+            }
+            divp.appendChild(divtp);
+            divp.appendChild(divtv);
+            divp.appendChild(divti);
+        }
+        for (var i=0; i<p.fids.length; i++) {
+            var fid = p.fids[i];
+            var path = p.paths[fid];
+            
+            var divti = document.getElementById("TI"+fid);
+            var divte = document.createElement("div");
+            divte._loc = loc;		       
+            divte.id = "TE"+fid;                           
+            divte.className = "idxfillpost";                           
+            divte.innerHTML = '<span class="idx">&nbsp;</span>';
+            divte.style.position="absolute";
+            divte.style.visibility="hidden";
+            divte.style.height = path.post+"px";
+            
+            divti.appendChild(divte);
+        }
+    }
+}
+				       
+function opencloseall() {
+	if (document.getElementById('divTopLeftA') &&
+            document.getElementById('divTopLeftA').innerHTML == '[+]') {
+	    openall()
+        } else {
+	    closeall()
+        }
+}
+				       
+function openall() {
+    if (p) {
+        for (var i=0; i<p.fids.length; i++) {
+            open(p.b,p.fids[i])
+            top.main.locationopen(p.fids[i]);
+        }
+	if (document.getElementById('divTopLeftA')){
+            document.getElementById('divTopLeftA').innerHTML = '[-]';
+	}
+    }  
+}	      
+
+function closeall() {
+    if (p) {
+        for (var i=0; i<p.fids.length; i++) {
+            close(p.b,p.fids[i])
+            top.main.locationclose(p.fids[i]);
+        }
+	if (document.getElementById('divTopLeftA')){
+            document.getElementById('divTopLeftA').innerHTML = '[+]';
+	}
+    }  
+}	      
+
+function proportional() {
+    if (p) {
+	if (document.getElementById('divTopLeftO') &&
+            document.getElementById('divTopLeftO').innerHTML == '[0]') {
+            for (var i=0; i<p.fids.length; i++) {
+                var fid = p.fids[i];
+                divshow("TP"+fid);
+                divshow("TE"+fid);
+            }
+	    if (document.getElementById('divTopLeftO')){
+                document.getElementById('divTopLeftO').innerHTML = '[1]';
+	    }				   
+        } else {
+	    for (var i=0; i<p.fids.length; i++) {
+                var fid = p.fids[i];
+                divhide("TP"+fid);
+                divhide("TE"+fid);
+            }
+	    if (document.getElementById('divTopLeftO')){
+                document.getElementById('divTopLeftO').innerHTML = '[0]';
+	    }				   
+	}
+    }  
+}	      
+
+function open(b,p) {
+    var ids = p.split(".");
+    for (var i=0; i<ids.length; i++) {
+         show(ids[i]);
+    }
+}
+
+function close(b,p) {
+    var ids = p.split(".");
+    hide(ids[ids.length-1]);
+}
+
+function find_ancestor(obj,tag) {
+    var parent = obj;
+    while (1) {
+        parent = parent.parentNode;
+	if (parent == null)
+	    return null;
+	if (parent.tagName == tag.toLowerCase() || parent.tagName == tag.toUpperCase())
+            return parent;
+      	if (parent.tagName == 'HTML' || parent.tagName == 'html')
+            return null;
+    }
+}
+
+function gotolocation_onload()  {
+	var query = (location.href.indexOf("?")+1);
+	if (query) {
+		var idx = location.href.substr(query);
+		if (idx.substr(0,1) == 'D' &&
+		    idx.substr(idx.length-2) == "ue") {
+			var target = parseInt(idx.substr(1,idx.length-3))+'';
+			if (typeof(paths[target]) != 'undefined') {
+				var path = paths[target];
+				var c = new Array();
+				for (i in path) {
+					c.push(path[i]);    
+				}
+			        traversepath(c);
+					    
+				
+					    
+			}
+		}
+	}
+}
+
+function checkfile(fid) {
+	if ( fid != '@') {
+	    var l = top.main.location;
+	    var len = 0;
+	    if (top.main.location.hash) 
+		len = top.main.location.hash.length;
+	    if (top.main.location.href.substr(0, top.main.location.href.length-len) != fid) {
+		top.main.location = fid;
+	    }
+	}		
+}
+
+function gotolocationopen(elem,sid, fid,id) {
+	var path = paths[fid];
+	var c = new Array();
+	c.push("gotolocation("+sid);    				    
+	for (i in path) {
+		c.push(path[i]);    
+	}
+	c.push("gotolocation("+id);    				    
+	traversepath(c);
+}
+
+function gotolocation(id,finish,arg) {
+	if (document.getElementById(id)) {				    
+	   // document.location.href = '#' + id;
+	   location = '#' + id;				    
+	} if (document.getElementsByName(id)) {				    
+	    //document.location.href = '#' + id;
+	   location = '#' + id;				    
+	}
+	if (typeof(finish) == 'function') {
+		  finish(arg);
+	}				    
+}
+					    
+function traversepath(path)  {
+	if (path.length > 0) {				    
+	    var p = path.shift();
+	    p += ", traversepath, path);";
+	    eval(p);
+	}
+}
+
+</script>
+
+
+
+<!-- *********************************************************
+     * You may use this code for free on any web page provided that 
+     * these comment lines and the following credit remain in the code.
+     * Floating Div from http://www.javascript-fx.com
+     ********************************************************  -->
+<div id="divTopLeft"     style="position:absolute">
+<span class="idx"><a id="divTopLeftA" href="javascript:opencloseall()">[+]</a><a id="divTopLeftO"  href="javascript:proportional()">[0]</a></span>
+</div>
+
+<script type="text/javascript">
+var ns = (navigator.appName.indexOf("Netscape") != -1);
+var d = document;
+function JSFX_FloatDiv(id, sx, sy)
+{
+	var el=d.getElementById?d.getElementById(id):d.all?d.all[id]:d.layers[id];
+	var px = document.layers ? "" : "px";
+	window[id + "_obj"] = el;
+	if(d.layers)el.style=el;
+	el.cx = el.sx = sx;el.cy = el.sy = sy;
+	el.sP=function(x,y){this.style.left=x+px;this.style.top=y+px;};
+
+	el.floatIt=function()
+	{
+		var pX, pY;
+		pX = (this.sx >= 0) ? 0 : ns ? innerWidth : 
+		document.documentElement && document.documentElement.clientWidth ? 
+		document.documentElement.clientWidth : document.body.clientWidth;
+		pY = ns ? pageYOffset : document.documentElement && document.documentElement.scrollTop ? 
+		document.documentElement.scrollTop : document.body.scrollTop;
+		if(this.sy<0) 
+		pY += ns ? innerHeight : document.documentElement && document.documentElement.clientHeight ? 
+		document.documentElement.clientHeight : document.body.clientHeight;
+		this.cx += (pX + this.sx - this.cx);this.cy += (pY + this.sy - this.cy);
+		this.sP(this.cx, this.cy);
+		setTimeout(this.id + "_obj.floatIt()", 20);
+	}
+	return el;
+}
+JSFX_FloatDiv("divTopLeft", -50,2).floatIt();
+</script>
+<!-- ********************************************************* -->
+  
+  </head>
+  <body onLoad="onloadPage()">
+
+   <!-- ¶ re_fidx ¶ -->
+
+  
+
+
+<script language="JavaScript1.2" type="text/javascript">
+ function onloadPage() {
+ /*¶ re_fidx_onload ¶ */
+}
+</script>
+
+ 
+<!--  
+  <div id="test" style="position: absolute; background-color: black; visibility: visible; color: white; left: 0px; top: 1312px;">
+        <big>(0,1312)</big>
+  </div>
+-->
+
+
+
+  </body>
+  
+</html>
+
+
+
+
+
+
+
+
+

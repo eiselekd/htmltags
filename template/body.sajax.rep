@@ -1,0 +1,24 @@
+<script language="JavaScript1.3" type="text/javascript" >document.htmltagid = "htmltagidx"; </script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.win.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.span.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.xml.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.ajax.js.php"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.path.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.hash.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.css.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.ptree.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.jquery.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfile_idx¶.htmltag.idx.js"></script>
+<pre>¶re_body¶</pre>¶re_idx¶¶re_struct¶
+<script language="JavaScript1.3" type="text/javascript">
+function onloadPage() {
+top.htmltag.hash.hashListener.init();
+¶re_onload¶
+top.htmltag.path.gotolocation_onload();
+if (top.idx) {
+}
+top["htmltagidx"].loaded = 1;
+}
+</script>
+

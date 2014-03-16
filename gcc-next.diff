@@ -1,0 +1,3522 @@
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/Makefile.in gcc-4.2.1/gcc/Makefile.in
+--- gcc-4.2.1.ori/gcc/Makefile.in	2014-03-13 18:58:53 +0000
++++ gcc-4.2.1/gcc/Makefile.in	2014-03-13 19:30:51 +0000
+@@ -653,6 +653,12 @@
+ # A list of all the language-specific executables.
+ COMPILERS = cc1$(exeext) @all_compilers@
+ 
++PINFOCOMPILERS      = cc1$(exeext)
++PINFOCOMPILERSREAL  = cc1.real$(exeext)
++PINFOCOMPILERSPP      = cc1plus$(exeext)
++PINFOCOMPILERSREALPP  = cc1plus.real$(exeext)
++PINFOCOMPILERSREDIR = $(srcdir)/gcc.pre.sh
++
+ # List of things which should already be built whenever we try to use xgcc
+ # to compile anything (without linking).
+ GCC_PASSES=xgcc$(exeext) cc1$(exeext) specs $(EXTRA_PASSES)
+@@ -965,7 +971,7 @@
+ 
+ # Language-specific object files for C and Objective C.
+ C_AND_OBJC_OBJS = attribs.o c-errors.o c-lex.o c-pragma.o c-decl.o c-typeck.o \
+-  c-convert.o c-aux-info.o c-common.o c-opts.o c-format.o c-semantics.o \
++  c-convert.o c-aux-info.o c-parse-info.o c-common.o c-opts.o c-format.o c-semantics.o \
+   c-incpath.o cppdefault.o c-ppoutput.o c-cppbuiltin.o prefix.o \
+   c-objc-common.o c-dump.o c-pch.o c-parser.o $(C_TARGET_OBJS) \
+   c-gimplify.o tree-mudflap.o c-pretty-print.o c-omp.o
+@@ -1620,6 +1626,8 @@
+     tree-mudflap.h
+ c-aux-info.o : c-aux-info.c  $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) $(TREE_H) \
+     $(C_TREE_H) $(FLAGS_H) toplev.h
++c-parse-info.o : c-parse-info.c  $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) $(TREE_H) \
++    $(C_TREE_H) $(FLAGS_H) toplev.h
+ c-convert.o : c-convert.c $(CONFIG_H) $(SYSTEM_H) coretypes.h $(TM_H) \
+     $(TREE_H) $(FLAGS_H) toplev.h $(C_COMMON_H) convert.h $(C_TREE_H) \
+     langhooks.h $(TARGET_H)
+@@ -3657,9 +3665,11 @@
+ # Install the driver last so that the window when things are
+ # broken is small.
+ install: install-common $(INSTALL_HEADERS) $(INSTALL_LIBGCC) \
+-    install-cpp install-man install-info install-@POSUB@ \
++    install-cpp  \
+     install-driver
+ 
++#install-man install-info install-@POSUB@
++
+ # Handle cpp installation.
+ install-cpp: installdirs cpp$(exeext)
+ 	-rm -f $(DESTDIR)$(bindir)/$(CPP_INSTALL_NAME)$(exeext)
+@@ -3686,7 +3696,15 @@
+ 	for file in $(COMPILERS); do \
+ 	  if [ -f $$file ] ; then \
+ 	    rm -f $(DESTDIR)$(libexecsubdir)/$$file; \
++	    if [ "$$file" = "$(PINFOCOMPILERS)" ] ; then \
++		$(INSTALL_PROGRAM) $$file                 $(DESTDIR)$(libexecsubdir)/$(PINFOCOMPILERSREAL); \
++		$(INSTALL_PROGRAM) $(PINFOCOMPILERSREDIR) $(DESTDIR)$(libexecsubdir)/$$file; \
++            elif [ "$$file" = "$(PINFOCOMPILERSPP)" ] ; then \
++		$(INSTALL_PROGRAM) $$file                 $(DESTDIR)$(libexecsubdir)/$(PINFOCOMPILERSREALPP); \
++		$(INSTALL_PROGRAM) $(PINFOCOMPILERSREDIR) $(DESTDIR)$(libexecsubdir)/$$file; \
++            else \
+ 	    $(INSTALL_PROGRAM) $$file $(DESTDIR)$(libexecsubdir)/$$file; \
++	    fi; \
+ 	  else true; \
+ 	  fi; \
+ 	done
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-aux-info.c gcc-4.2.1/gcc/c-aux-info.c
+--- gcc-4.2.1.ori/gcc/c-aux-info.c	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c-aux-info.c	2014-03-13 18:59:10 +0000
+@@ -299,13 +299,33 @@
+    string onto the returned "seed".  */
+ 
+ static const char *
+-gen_type (const char *ret_val, tree t, formals_style style)
++gen_type_real (const char *ret_val, tree t, formals_style style, int dostruct)
+ {
+-  tree chain_p;
++    tree chain_p; int i;
++  char buff2[64]; char *b;
+ 
+   /* If there is a typedef name for this type, use it.  */
+-  if (TYPE_NAME (t) && TREE_CODE (TYPE_NAME (t)) == TYPE_DECL)
+-    data_type = IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (t)));
++  if (TYPE_NAME (t) && TREE_CODE (TYPE_NAME (t)) == TYPE_DECL && !dostruct) {
++      int pcnt = 0;
++      b = buff2;
++      tree pt = gen_parse_info_getrealtype(TREE_TYPE (TYPE_NAME (t)),&pcnt);
++      for(i = 0; i < pcnt;i++) {
++          *b = '*'; b++;
++      } 
++      *b = 0;
++      data_type = concat (buff2, IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (t))), NULL);
++      if (TREE_CODE (pt) == RECORD_TYPE ||
++	  TREE_CODE (pt) == RECORD_TYPE ||
++	  TREE_CODE (pt) == ENUMERAL_TYPE ) {
++          
++          if (flag_gen_parse_info) { 
++	      sprintf (buff2, "@(%d)->@(%d)", DECL_DECLID (TYPE_NAME (t)),TYPE_STRUCTID(pt));
++	  } else {
++	      strcpy (buff2, "");
++	  }
++	  data_type = concat (buff2, data_type, NULL);
++      }
++  }
+   else
+     {
+       switch (TREE_CODE (t))
+@@ -365,7 +385,13 @@
+ 	   whole darn type specification.  Yuck!  */
+ 
+ 	case RECORD_TYPE:
+-	  if (TYPE_NAME (t))
++ 	  if (flag_gen_parse_info) {
++	      sprintf (buff2, "@(%d)", TYPE_STRUCTID(t));
++	  } else {
++	      strcpy (buff2, "");
++	  }
++	  
++	  if (TYPE_NAME (t) && !dostruct)
+ 	    data_type = IDENTIFIER_POINTER (TYPE_NAME (t));
+ 	  else
+ 	    {
+@@ -379,12 +405,25 @@
+ 		  data_type = concat (data_type, "; ", NULL);
+ 		}
+ 	      data_type = concat ("{ ", data_type, "}", NULL);
++
++	      if (TYPE_NAME (t)) {
++		      data_type = concat (IDENTIFIER_POINTER (TYPE_NAME (t)), " ", data_type, NULL);
++	      }
++	  
+ 	    }
+-	  data_type = concat ("struct ", data_type, NULL);
++	  
++	  data_type = concat (buff2,"struct ", data_type, NULL);
+ 	  break;
+ 
++	    
+ 	case UNION_TYPE:
+-	  if (TYPE_NAME (t))
++	  if (flag_gen_parse_info) {
++	      sprintf (buff2, "@(%d)", TYPE_STRUCTID(t));
++	  } else {
++	      strcpy (buff2, "");
++	  }
++
++	  if (TYPE_NAME (t) && !dostruct)
+ 	    data_type = IDENTIFIER_POINTER (TYPE_NAME (t));
+ 	  else
+ 	    {
+@@ -399,10 +438,19 @@
+ 		}
+ 	      data_type = concat ("{ ", data_type, "}", NULL);
+ 	    }
+-	  data_type = concat ("union ", data_type, NULL);
++	  if (TYPE_NAME (t)) {
++	      data_type = concat (IDENTIFIER_POINTER (TYPE_NAME (t)), " ", data_type, NULL);
++	  }
++	  data_type = concat (buff2,"union ", data_type, NULL);
+ 	  break;
+ 
+ 	case ENUMERAL_TYPE:
++          if (flag_gen_parse_info) {
++	      sprintf (buff2, "@(%d)", TYPE_STRUCTID(t));
++	  } else {
++	      strcpy (buff2, "");
++	  }
++
+ 	  if (TYPE_NAME (t))
+ 	    data_type = IDENTIFIER_POINTER (TYPE_NAME (t));
+ 	  else
+@@ -419,7 +467,7 @@
+ 		}
+ 	      data_type = concat ("{ ", data_type, " }", NULL);
+ 	    }
+-	  data_type = concat ("enum ", data_type, NULL);
++	  data_type = concat (buff2,"enum ", data_type, NULL);
+ 	  break;
+ 
+ 	case TYPE_DECL:
+@@ -427,7 +475,12 @@
+ 	  break;
+ 
+ 	case INTEGER_TYPE:
++	  if (TYPE_NAME (t)) {
+ 	  data_type = IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (t)));
++	  } else {
++	    data_type = "int";
++	  }
++	  
+ 	  /* Normally, `unsigned' is part of the deal.  Not so if it comes
+ 	     with a type qualifier.  */
+ 	  if (TYPE_UNSIGNED (t) && TYPE_QUALS (t))
+@@ -435,7 +488,11 @@
+ 	  break;
+ 
+ 	case REAL_TYPE:
++	  if (TYPE_NAME (t)) {
+ 	  data_type = IDENTIFIER_POINTER (DECL_NAME (TYPE_NAME (t)));
++	  } else {
++	    data_type = "float";
++	  }
+ 	  break;
+ 
+ 	case VOID_TYPE:
+@@ -446,7 +503,13 @@
+ 	  data_type = "[ERROR]";
+ 	  break;
+ 
++	case REFERENCE_TYPE:
++	  data_type = "&";
++	  break;
++	  
+ 	default:
++	    printf("unknown code %d %d\n",REFERENCE_TYPE, TREE_CODE (t));
++	    
+ 	  gcc_unreachable ();
+ 	}
+     }
+@@ -459,6 +522,12 @@
+   return ret_val;
+ }
+ 
++static const char *
++gen_type (const char *ret_val, tree t, formals_style style)
++{
++    return gen_type_real (ret_val, t, style, 0);
++}
++
+ /* Generate a string (source) representation of an entire entity declaration
+    (using some particular style for function types).
+ 
+@@ -551,7 +620,7 @@
+ gen_aux_info_record (tree fndecl, int is_definition, int is_implicit,
+ 		     int is_prototyped)
+ {
+-  if (flag_gen_aux_info)
++  if (flag_gen_aux_info || flag_gen_parse_info)
+     {
+       static int compiled_from_record = 0;
+       expanded_location xloc = expand_location (DECL_SOURCE_LOCATION (fndecl));
+@@ -559,7 +628,11 @@
+       /* Each output .X file must have a header line.  Write one now if we
+ 	 have not yet done so.  */
+ 
+-      if (!compiled_from_record++)
++      if (flag_gen_parse_info) {
++          fprintf (aux_info_file, "##");
++      }
++      
++      if ((!flag_gen_parse_info) && !compiled_from_record++)
+ 	{
+ 	  /* The first line tells which directory file names are relative to.
+ 	     Currently, -aux-info works only for files in the working
+@@ -589,3 +662,49 @@
+       fprintf (aux_info_file, "\n");
+     }
+ }
++
++char *
++gen_aux_info_type_str (tree type)
++{
++	const char *ret_val = "";
++	ret_val = gen_type (ret_val, type, ansi);
++	ret_val = affix_data_type (ret_val);
++	return ret_val;
++}
++
++#include <ctype.h>
++
++char *
++gen_aux_info_type_str_canonical (tree type)
++{
++	char *ret_val = "";
++	int p = flag_gen_parse_info, i;
++	flag_gen_parse_info = 0;
++	ret_val = gen_aux_info_type_str(type);
++	flag_gen_parse_info = p;
++	for (i = strlen(ret_val)-1; i > 0; i--) {
++		if (isblank(ret_val[i])) {
++			ret_val[i] = 0;
++		} else {
++			break;
++		}
++	}
++	for (i = 0; i < strlen(ret_val); i++) {
++		if (isblank(ret_val[i]) || !isprint(ret_val[i])) {
++			ret_val[i] = '_';
++		} else if (ret_val[i] == '*') {
++			ret_val[i] = 'P';
++		}
++	}
++	return ret_val;
++}
++
++void
++gen_aux_info_type (tree type)
++{
++    if (aux_info_file) {
++	const char *ret_val = "";
++	ret_val = gen_aux_info_type_str (type);
++	fprintf (aux_info_file,ret_val);
++    }
++}
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-decl.c gcc-4.2.1/gcc/c-decl.c
+--- gcc-4.2.1.ori/gcc/c-decl.c	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c-decl.c	2014-03-13 18:59:10 +0000
+@@ -62,6 +62,9 @@
+ #include "langhooks-def.h"
+ #include "pointer-set.h"
+ 
++static int structid = 1;
++static int declid = 1;
++
+ /* In grokdeclarator, distinguish syntactic contexts of declarators.  */
+ enum decl_context
+ { NORMAL,			/* Ordinary declaration */
+@@ -4565,6 +4568,20 @@
+       if (type_quals)
+ 	type = c_build_qualified_type (type, type_quals);
+       decl = build_decl (TYPE_DECL, declarator->u.id, type);
++      DECL_DECLID (decl) = structid++;
++
++      if (flag_gen_parse_info && declspecs && declspecs->type && aux_info_file) {
++          fprintf (aux_info_file, "%d <=[ tdef (@%d->d@%d) [", declspecs->tokid,TYPE_STRUCTID(type),DECL_DECLID (decl));
++	  gen_parse_info_type (type);
++	  fprintf (aux_info_file, ":%s", IDENTIFIER_POINTER(declarator->u.id));
++	  fprintf (aux_info_file, "] decl [");
++	  gen_parse_info_loc_t(declspecs->loc);
++	  fprintf (aux_info_file, "]-[");
++          gen_parse_info_loc_t(input_location);
++	  fprintf (aux_info_file, "]\n");
++	  fflush(aux_info_file);
++      }
++
+       if (declspecs->explicit_signed_p)
+ 	C_TYPEDEF_EXPLICITLY_SIGNED (decl) = 1;
+       decl_attributes (&decl, returned_attrs, 0);
+@@ -4620,6 +4637,33 @@
+ 
+   {
+     tree decl;
++    int cdeclid = declid++;
++    
++    if (flag_gen_parse_info && declspecs && declspecs->type && aux_info_file) {
++        const char *decltyp = " decl ";
++	switch(decl_context) {
++	case PARM: decltyp = "(decl)"; break;
++	case FIELD: decltyp = "{decl}"; break;
++	case FUNCTION_TYPE: decltyp = "decl()"; break;
++	default: break;
++	}
++	
++	if (decl_context != FIELD) {
++	    fprintf (aux_info_file, "%d(@%d) <=[%s [",declspecs->tokid, cdeclid, decltyp);
++	    gen_parse_info_type (type);
++	    fprintf (aux_info_file, ":%s", declarator->u.id ? IDENTIFIER_POINTER(declarator->u.id) : "<abstrace>");
++	    fprintf (aux_info_file, "] at [");
++            gen_parse_info_loc_t(declspecs->loc);
++            fprintf (aux_info_file, "]-[");
++            gen_parse_info_loc_t(input_location);
++            fprintf (aux_info_file, "] type(@%d) [",TYPE_STRUCTID(type));
++            gen_parse_info_type (type);
++	    fprintf (aux_info_file, "] decl(@%d) at: ",declspecs->typedef_declid);
++	    gen_parse_info_loc_t(TYPE_LOCATION(gen_parse_info_getrealtype(type,0)));
++	    fprintf (aux_info_file, "\n");
++	    fflush(aux_info_file);
++	}
++    }
+ 
+     if (decl_context == PARM)
+       {
+@@ -4660,6 +4704,7 @@
+ 	type_as_written = type;
+ 
+ 	decl = build_decl (PARM_DECL, declarator->u.id, type);
++        
+ 	if (size_varies)
+ 	  C_DECL_VARIABLE_SIZE (decl) = 1;
+ 
+@@ -4699,6 +4744,10 @@
+ 	  }
+ 	type = c_build_qualified_type (type, type_quals);
+ 	decl = build_decl (FIELD_DECL, declarator->u.id, type);
++	
++	DECL_SOURCE_LOCATION (decl) = declarator->id_loc;
++	FIELD_DECL_TOKID(decl) = declspecs->tokid;
++	
+ 	DECL_NONADDRESSABLE_P (decl) = bitfield;
+ 
+ 	if (size_varies)
+@@ -4825,6 +4874,7 @@
+ 
+ 	decl = build_decl (VAR_DECL, declarator->u.id, type);
+ 	DECL_SOURCE_LOCATION (decl) = declarator->id_loc;
++        
+ 	if (size_varies)
+ 	  C_DECL_VARIABLE_SIZE (decl) = 1;
+ 
+@@ -4863,6 +4913,10 @@
+ 	  }
+       }
+ 
++    if (decl) {
++        DECL_DECLID (decl) = cdeclid;
++    }
++
+     if (storage_class == csc_extern
+ 	&& variably_modified_type_p (type, NULL_TREE))
+       {
+@@ -5218,6 +5272,11 @@
+   ret.kind = (ref ? ctsk_tagref : ctsk_tagfirstref);
+   if (ref && TREE_CODE (ref) == code)
+     {
++	    if (TYPE_DEP(ref)) {
++		    if (flag_gen_dep_info) {
++			    dep_add_top(TYPE_DEP(ref));
++		    }
++	    }
+       ret.spec = ref;
+       return ret;
+     }
+@@ -5241,6 +5300,11 @@
+       TYPE_MAX_VALUE (ref) = TYPE_MAX_VALUE (unsigned_type_node);
+     }
+ 
++  if (code == RECORD_TYPE ||
++      code == UNION_TYPE) {
++        TYPE_STRUCTID(ref) = structid++;
++  }
++
+   pushtag (name, ref);
+ 
+   ret.spec = ref;
+@@ -5262,7 +5326,7 @@
+    CODE says which kind of tag NAME ought to be.  */
+ 
+ tree
+-start_struct (enum tree_code code, tree name)
++start_struct (enum tree_code code, tree name, location_t loc)
+ {
+   /* If there is already a tag defined at this scope
+      (as a forward reference), just return it.  */
+@@ -5287,6 +5351,8 @@
+ 	  else
+ 	    error ("nested redefinition of %<struct %E%>", name);
+ 	}
++      
++      TYPE_LOCATION(ref) = loc;
+     }
+   else
+     {
+@@ -5294,6 +5360,10 @@
+ 
+       ref = make_node (code);
+       pushtag (name, ref);
++      TYPE_LOCATION(ref) = loc;
++    }
++  if (!TYPE_STRUCTID(ref) ) {
++      TYPE_STRUCTID(ref) = structid++;
+     }
+ 
+   C_TYPE_BEING_DEFINED (ref) = 1;
+@@ -5434,7 +5504,7 @@
+    ATTRIBUTES are attributes to be applied to the structure.  */
+ 
+ tree
+-finish_struct (tree t, tree fieldlist, tree attributes)
++finish_struct (tree t, tree fieldlist, tree attributes, int tokid)
+ {
+   tree x;
+   bool toplevel = file_scope == current_scope;
+@@ -5682,6 +5752,48 @@
+   /* Finish debugging output for this type.  */
+   rest_of_type_compilation (t, toplevel);
+ 
++  if (flag_gen_parse_info && aux_info_file) {
++      
++      fprintf (aux_info_file, "%d <=[%d ", tokid , TYPE_STRUCTID(t));
++      if (TREE_CODE(t) == RECORD_TYPE) {
++	  fprintf (aux_info_file, "struct ");
++      } else {
++	  fprintf (aux_info_file, "union ");
++      }
++      if (TYPE_NAME (t))
++	  fprintf (aux_info_file, "%s [",IDENTIFIER_POINTER (TYPE_NAME (t)));
++      else
++	  fprintf (aux_info_file, "<unknown> [");
++      
++      gen_parse_info_type (t);
++      fprintf (aux_info_file, "] decl started at: [");
++      gen_parse_info_loc_t(TYPE_LOCATION(t));
++      fprintf (aux_info_file, "]-[");
++      gen_parse_info_loc_t(input_location);
++      fprintf (aux_info_file, "]\n");
++      fflush(aux_info_file);
++
++      for (x = fieldlist; x; x = TREE_CHAIN (x)) {
++	  if (TREE_CODE (x) == FIELD_DECL) {
++	      fprintf (aux_info_file, "%d(@%d) <=[{decl} [",FIELD_DECL_TOKID(x),TYPE_STRUCTID(t) );
++	      fprintf (aux_info_file, "%s", DECL_NAME(x) ? IDENTIFIER_POINTER(DECL_NAME(x)) : "<abstract>");
++
++	      fprintf (aux_info_file, "] start [");
++	      gen_parse_info_loc_t(DECL_SOURCE_LOCATION (x));
++	      fprintf (aux_info_file, "] type ["/*,%04d %04d DECL_FIELD_OFFSET (x) , DECL_FIELD_BIT_OFFSET (x)*/);
++
++	      gen_parse_info_type (TREE_TYPE (x));
++	      fprintf (aux_info_file, "] decl at: ");
++	      gen_parse_info_loc_t(TYPE_LOCATION(gen_parse_info_getrealtype(TREE_TYPE (x),0)));
++	      fprintf (aux_info_file, "\n");
++	      fflush(aux_info_file);
++	  }
++      }
++  
++      
++  }
++
++  
+   /* If we're inside a function proper, i.e. not file-scope and not still
+      parsing parameters, then arrange for the size of a variable sized type
+      to be bound now.  */
+@@ -5743,6 +5855,10 @@
+   enum_next_value = integer_zero_node;
+   enum_overflow = 0;
+ 
++  if (!TYPE_STRUCTID(enumtype) ) {
++      TYPE_STRUCTID(enumtype) = structid++;
++  }
++
+   if (flag_short_enums)
+     TYPE_PACKED (enumtype) = 1;
+ 
+@@ -5756,9 +5872,9 @@
+    Returns ENUMTYPE.  */
+ 
+ tree
+-finish_enum (tree enumtype, tree values, tree attributes)
++finish_enum (tree enumtype, tree values, tree attributes, int tokid)
+ {
+-  tree pair, tem;
++    tree pair, tem, x;
+   tree minnode = 0, maxnode = 0;
+   int precision, unsign;
+   bool toplevel = (file_scope == current_scope);
+@@ -5822,6 +5938,40 @@
+ 
+   if (values != error_mark_node)
+     {
++
++        if (flag_gen_parse_info && aux_info_file) {
++            
++            fprintf (aux_info_file, "%d <=[%d ", tokid , TYPE_STRUCTID(enumtype));
++            fprintf (aux_info_file, "enum ");
++            if (TYPE_NAME (enumtype))
++                fprintf (aux_info_file, "%s [",IDENTIFIER_POINTER (TYPE_NAME (enumtype)));
++            else
++                fprintf (aux_info_file, "<unknown> [");
++            
++            gen_parse_info_type (enumtype);
++            fprintf (aux_info_file, "] decl started at: [");
++            gen_parse_info_loc_t(TYPE_LOCATION(enumtype));
++            fprintf (aux_info_file, "]-[");
++            gen_parse_info_loc_t(input_location);
++            fprintf (aux_info_file, "]\n");
++            fflush(aux_info_file);
++            
++            for (x = values; x; x = TREE_CHAIN (x)) {
++                int val = -1; tree decl = TREE_PURPOSE (x);
++                if (TREE_CODE(decl) == CONST_DECL) {
++                    fprintf (aux_info_file, "%d(@%d) <=[{decl} [",decl ? CONST_DECL_TOKID(decl) : -1,TYPE_STRUCTID(enumtype) );
++                    fprintf (aux_info_file, "%s", DECL_NAME(decl) ? IDENTIFIER_POINTER(DECL_NAME(decl)) : "<abstract>");
++                    if (TREE_CODE (TREE_VALUE (x)) == INTEGER_CST) {
++                        val = TREE_INT_CST_LOW (TREE_VALUE (x));
++                    }
++                    fprintf (aux_info_file, "] value [%d",val);
++                    fprintf (aux_info_file, "]\n");
++                    fflush(aux_info_file);
++                }
++            }
++        }
++
++
+       /* Change the type of the enumerators to be the enum type.  We
+ 	 need to do this irrespective of the size of the enum, for
+ 	 proper type checking.  Replace the DECL_INITIALs of the
+@@ -5894,7 +6044,7 @@
+    Assignment of sequential values by default is handled here.  */
+ 
+ tree
+-build_enumerator (tree name, tree value)
++build_enumerator (tree name, tree value, int tokid)
+ {
+   tree decl, type;
+ 
+@@ -5952,6 +6102,8 @@
+ 
+   decl = build_decl (CONST_DECL, name, type);
+   DECL_INITIAL (decl) = convert (type, value);
++  CONST_DECL_TOKID(decl) = tokid;
++  
+   pushdecl (decl);
+ 
+   return tree_cons (decl, value, NULL_TREE);
+@@ -7165,6 +7317,9 @@
+   ret->const_p = false;
+   ret->volatile_p = false;
+   ret->restrict_p = false;
++  ret->loc = input_location;
++  ret->tokid = 0;
++  ret->typedef_declid = 0;
+   return ret;
+ }
+ 
+@@ -7555,6 +7710,7 @@
+ 	; /* Allow the type to default to int to avoid cascading errors.  */
+       else
+ 	{
++          specs->typedef_declid = DECL_DECLID (type);
+ 	  specs->type = TREE_TYPE (type);
+ 	  specs->decl_attr = DECL_ATTRIBUTES (type);
+ 	  specs->typedef_p = true;
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-lex.c gcc-4.2.1/gcc/c-lex.c
+--- gcc-4.2.1.ori/gcc/c-lex.c	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c-lex.c	2014-03-13 18:59:10 +0000
+@@ -98,6 +98,35 @@
+   cb->def_pragma = cb_def_pragma;
+   cb->valid_pch = c_common_valid_pch;
+   cb->read_pch = c_common_read_pch;
++  if (flag_gen_parse_info) {
++      /* print out "#include ..." strings from c-ppoutput.c */
++      cb->include = cb_include;
++      cpp_print.src_line = -1;
++      cpp_print.printed = 0;
++      cpp_print.prev = 0;
++      cpp_print.first_time = 1;
++      cpp_print.outf = aux_info_file;
++  }
++  
++  cb->parse_info_cb.gen_dep_info_macro = gen_dep_info_macro;
++
++  cb->parse_info_cb.gen_parse_info_token = gen_parse_info_token;
++  cb->parse_info_cb.gen_parse_info_header = gen_parse_info_header;
++  cb->parse_info_cb.gen_parse_info_char = gen_parse_info_char;
++  cb->parse_info_cb.gen_parse_info_write = gen_parse_info_write;
++  cb->parse_info_cb.gen_parse_info_loc = gen_parse_info_loc;
++  cb->parse_info_cb.gen_parse_info_loc_line = gen_parse_info_loc_line;
++  cb->parse_info_cb.gen_parse_info_printf = gen_parse_info_printf;
++  cb->parse_info_cb.gen_parse_info_header_direct = gen_parse_info_header_direct;
++  cb->parse_info_cb.flag_gen_parse_info = flag_gen_parse_info;
++  cb->parse_info_cb.flag_gen_dep_info = flag_gen_dep_info;
++
++  cb->parse_info_cb.gen_parse_info_path_direct = gen_parse_info_path_direct;
++  gen_parse_info_init(&cb->parse_info_cb);
++  cb->parse_info_cb.gen_parse_info_updateloc = gen_parse_info_updateloc;
++  
++  cb->parse_info_cb.path = 0;
++  cb->parse_info_cb.pathcnt = 0;
+ 
+   /* Set the debug callbacks if we can use them.  */
+   if (debug_info_level == DINFO_LEVEL_VERBOSE
+@@ -244,6 +273,20 @@
+ 	    }
+ #endif
+ 	}
++
++      if (flag_gen_parse_info) {
++	  source_location src_loc = new_map->start_location;
++	  struct cpp_callbacks *cb = cpp_get_callbacks (parse_in);
++	  location_t loc = gen_parse_info_src2loc (src_loc);
++          int from = 0; const struct line_map *map;
++          if (! MAIN_FILE_P (new_map)) {
++              map = INCLUDED_FROM (&line_table, new_map);
++              from = LAST_SOURCE_LINE (map);
++          }
++	  cb->parse_info_cb.gen_parse_info_printf("%d@# include + %s\n",from,LOCATION_FILE(loc));
++	  gen_parse_info_updateloc (&(cb->parse_info_cb), src_loc, 1);
++      }
++      
+     }
+   else if (new_map->reason == LC_LEAVE)
+     {
+@@ -257,8 +300,38 @@
+ #endif
+       pop_srcloc ();
+ 
++      if (flag_gen_parse_info) {
++	  source_location src_loc = new_map->start_location;
++	  struct cpp_callbacks *cb = cpp_get_callbacks (parse_in);
++	  cb->parse_info_cb.gen_parse_info_printf("# include - \n");
++	  gen_parse_info_updateloc (&(cb->parse_info_cb), src_loc, 1);
++      }
++      
+       (*debug_hooks->end_source_file) (new_map->to_line);
+     }
++  else if (new_map->reason == LC_RENAME) {
++      if (flag_gen_parse_info) {
++          source_location src_loc = new_map->start_location;
++          struct cpp_callbacks *cb = cpp_get_callbacks (parse_in);
++          location_t loc = gen_parse_info_src2loc (src_loc);
++          cb->parse_info_cb.gen_parse_info_printf("# rename %s\n",LOCATION_FILE(loc));
++          gen_parse_info_updateloc (&(cb->parse_info_cb), src_loc, 1);
++      }
++  }
++  else {
++      if (flag_gen_parse_info) {
++	  source_location src_loc = new_map->start_location;
++	  struct cpp_callbacks *cb = cpp_get_callbacks (parse_in);
++	  location_t loc = gen_parse_info_src2loc (src_loc);
++          int from = 0; const struct line_map *map;
++          if (! MAIN_FILE_P (new_map)) {
++              map = INCLUDED_FROM (&line_table, new_map);
++              from = LAST_SOURCE_LINE (map);
++          }
++	  cb->parse_info_cb.gen_parse_info_printf("%d@# include ???\n",from,LOCATION_FILE(loc));
++	  gen_parse_info_updateloc (&(cb->parse_info_cb), src_loc, 1);
++      }
++  }
+ 
+   update_header_times (new_map->to_file);
+   in_system_header = new_map->sysp != 0;
+@@ -323,29 +396,78 @@
+ 			 (const char *) NODE_NAME (node));
+ }
+ 
++
++static void c_lex_outtoken(const cpp_token *tok) {
++    enum cpp_ttype type;
++    
++    if (flag_gen_parse_info && aux_info_file) {
++	struct cpp_callbacks *cb;
++	type = tok->type;
++	cb = cpp_get_callbacks (parse_in);
++	if (cb->parse_info_cb.pathcnt == 0 && type != CPP_PADDING)
++	    cb->parse_info_cb.gen_parse_info_updateloc(&cb->parse_info_cb, tok->src_loc,0);
++	
++	
++#ifdef USE_MAPPED_LOCATION
++	fprintf(stderr,"--enable-mapped-location for -fparse-info not implemeneted yet\n");
++	abort();
++#else 
++	gen_parse_info_header(tok->tokid,tok->src_loc,cb->parse_info_cb.path,cb->parse_info_cb.pathcnt);
++#endif
++	fprintf (aux_info_file, ":");
++	gen_parse_info_token (tok);
++	fprintf (aux_info_file, "\n");
++	
++	if (type == CPP_COMMENT) {
++	    unsigned int i;
++	    for(i = 0; i < tok->val.str.len; i++) {
++		if (tok->val.str.text[i] == '\n'){
++		    cb->parse_info_cb.src_line++;
++		}
++	    }
++	}
++	
++	fflush(aux_info_file);
++    }
++}
++
++extern int macro_stack_size;
++extern cpp_macro **macro_stack;
++
+ /* Read a token and return its type.  Fill *VALUE with its value, if
+    applicable.  Fill *CPP_FLAGS with the token's flags, if it is
+    non-NULL.  */
+ 
+ enum cpp_ttype
+-c_lex_with_flags (tree *value, location_t *loc, unsigned char *cpp_flags)
++c_lex_with_flags (tree *value, location_t *loc, unsigned char *cpp_flags, int *tokid, struct cpp_macro **macro )
+ {
+   static bool no_more_pch;
+   const cpp_token *tok;
+   enum cpp_ttype type;
+   unsigned char add_flags = 0;
++  if (macro)
++	  *macro = 0;
+ 
+   timevar_push (TV_CPP);
+  retry:
+   tok = cpp_get_token (parse_in);
+   type = tok->type;
+ 
++  if (macro_stack_size && macro)
++	  *macro = macro_stack[0];
++  
++  if (flag_gen_parse_info && aux_info_file) {
++      c_lex_outtoken(tok);
++  }
++  
+  retry_after_at:
+ #ifdef USE_MAPPED_LOCATION
+   *loc = tok->src_loc;
+ #else
+   *loc = input_location;
+ #endif
++  if (tokid)
++    *tokid = tok->tokid;
+   switch (type)
+     {
+     case CPP_PADDING:
+@@ -466,9 +588,15 @@
+       *value = build_int_cst (NULL, tok->val.pragma);
+       break;
+ 
++    case CPP_COMMENT:
++	if (flag_gen_parse_info && aux_info_file) {
++	    goto retry;
++	}
++	/* fall through */
++	
+       /* These tokens should not be visible outside cpplib.  */
+     case CPP_HEADER_NAME:
+-    case CPP_COMMENT:
++    case CPP_PARSEINFOSTACK:
+     case CPP_MACRO_ARG:
+       gcc_unreachable ();
+ 
+@@ -734,10 +862,16 @@
+     {
+     case CPP_PADDING:
+       goto retry;
++    case CPP_COMMENT:
++	if (flag_gen_parse_info && aux_info_file)
++	    c_lex_outtoken(tok);
++      goto retry;
+     case CPP_ATSIGN:
+       if (c_dialect_objc ())
+ 	{
+ 	  objc_string = true;
++	  if (flag_gen_parse_info && aux_info_file)
++	      c_lex_outtoken(tok);
+ 	  goto retry;
+ 	}
+       /* FALLTHROUGH */
+@@ -750,6 +884,8 @@
+       /* FALLTHROUGH */
+ 
+     case CPP_STRING:
++	if (flag_gen_parse_info && aux_info_file)
++	  c_lex_outtoken(tok);
+       if (!concats)
+ 	{
+ 	  gcc_obstack_init (&str_ob);
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-opts.c gcc-4.2.1/gcc/c-opts.c
+--- gcc-4.2.1.ori/gcc/c-opts.c	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c-opts.c	2014-03-13 18:59:10 +0000
+@@ -297,11 +297,16 @@
+       cpp_opts->discard_comments = 0;
+       break;
+ 
++    case OPT_CCC:
++      cpp_opts->preserve_spaces = 1;
++      /* fallt through */
++      
+     case OPT_CC:
+       cpp_opts->discard_comments = 0;
+       cpp_opts->discard_comments_in_macro_exp = 0;
+       break;
+ 
++
+     case OPT_D:
+       defer_opt (code, arg);
+       break;
+@@ -743,6 +748,10 @@
+       cpp_opts->preprocessed = value;
+       break;
+ 
++    case OPT_fpreprocessnewline:
++      cpp_opts->fpreprocessnewline = value;
++      break;
++
+     case OPT_freplace_objc_classes:
+       flag_replace_objc_classes = value;
+       break;
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-parse-info.c gcc-4.2.1/gcc/c-parse-info.c
+--- gcc-4.2.1.ori/gcc/c-parse-info.c	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/c-parse-info.c	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,216 @@
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "tm.h"
++#include "flags.h"
++#include "tree.h"
++#include "c-tree.h"
++#include "toplev.h"
++#include "cpplib.h"
++
++#define OP(sh, e, s) # sh ,
++#define TK(sh, e, s) # sh ,
++static const char * token_names[N_TTYPES] = { TTYPE_TABLE };
++
++tree gen_parse_info_getrealtype (tree t, int *p) {
++    switch (TREE_CODE (t)) {
++    case POINTER_TYPE:
++        if (p)
++            *p = *p + 1;
++        return gen_parse_info_getrealtype(TREE_TYPE (t),p);
++    default:
++        break;
++    }
++    return t;
++}
++
++location_t gen_parse_info_src2loc (source_location loc) {
++    location_t fe_loc;
++    const struct line_map *map;
++    map = linemap_lookup (&line_table, loc);
++    fe_loc.file = map->to_file;
++    fe_loc.line = SOURCE_LINE (map, loc);
++    return fe_loc;
++}
++
++void gen_parse_info_header_direct (int tokid, source_location srcloc, int *ar, int arcnt, int dir) {
++    int *ar_ext; location_t loc;
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    loc = gen_parse_info_src2loc(srcloc);
++    ar_ext = XNEWVEC(int, arcnt + 1);
++    if (arcnt)
++        memcpy(ar_ext, ar, arcnt*sizeof(int));
++    ar_ext[arcnt] = dir;
++    gen_parse_info_header (tokid, srcloc, ar_ext, arcnt+1);
++    free(ar_ext);
++}
++
++void gen_parse_info_path_direct (int *ar, int arcnt, int dir, int copen, int cclose) {
++    int *ar_ext;
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    ar_ext = XNEWVEC(int, arcnt + 1);
++    if (arcnt)
++        memcpy(ar_ext, ar, arcnt*sizeof(int));
++    ar_ext[arcnt] = dir;
++    gen_parse_info_header_path (ar_ext, arcnt+1, copen, cclose);
++    free(ar_ext);
++}
++
++void gen_parse_info_header (int tokid, source_location srcloc, int *ar, int arcnt) {
++    location_t loc;
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    loc = gen_parse_info_src2loc(srcloc);
++    fprintf (aux_info_file, "%d@%d:",LOCATION_LINE(loc),tokid);
++    fflush(aux_info_file);
++    /*gen_parse_info_loc (srcloc);*/
++    gen_parse_info_header_path(ar,arcnt,'[',']');
++}
++
++void gen_parse_info_loc (source_location srcloc) {
++    location_t loc;
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    loc = gen_parse_info_src2loc(srcloc);
++    fprintf (aux_info_file, "%s:%d",LOCATION_FILE(loc),LOCATION_LINE(loc));
++    fflush(aux_info_file);
++}
++
++void gen_parse_info_loc_line (source_location srcloc) {
++    location_t loc;
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    loc = gen_parse_info_src2loc(srcloc);
++    fprintf (aux_info_file, "%d",LOCATION_LINE(loc));
++    fflush(aux_info_file);
++}
++
++void gen_parse_info_loc_t (location_t loc) {
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    fprintf (aux_info_file, "%s:%d",LOCATION_FILE(loc),LOCATION_LINE(loc));
++    fflush(aux_info_file);
++}
++
++/* ============ */
++
++void gen_parse_info_header_path (int *ar, int arcnt, int copen, int cclose) {
++    int i;
++    if (!(flag_gen_parse_info && aux_info_file && ar && arcnt))
++        return;
++    gen_parse_info_printf("%c", copen);
++    for (i = 0; i < arcnt; i++) {
++        if(i) 
++            gen_parse_info_char(".");
++        gen_parse_info_printf("%d",ar[i]);
++    }
++    gen_parse_info_printf("%c", cclose);
++}
++
++void gen_parse_info_type (tree type) {
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    gen_aux_info_type (type);
++}
++
++void gen_parse_info_char(const char*c) {
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    fprintf (aux_info_file, "%s",c);
++    fflush(aux_info_file);
++}
++
++void gen_parse_info_write(const char*c, int len) {
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    fwrite (c, 1, len, aux_info_file);
++    fflush(aux_info_file);
++}
++
++void gen_parse_info_token (const cpp_token *tok) {
++    char *b; int i, extrastart, count, extra = 0;
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    fprintf (aux_info_file, "%s\t[",token_names[tok->type]);
++    fflush(aux_info_file);
++    if (tok->flags & PREV_WHITE) 
++	fprintf (aux_info_file, " ");
++    b = cpp_output_token_buffer(tok);
++    count = strlen(b);
++    for(i = 0; i < count;i++) {
++        if (b[i] == '@' || b[i] == '\n' || b[i] == '\\'){
++            extra++;
++        }
++    }
++    if (extra) {
++        char *pc = XNEWVEC ( char, count + extra + 2);
++        extrastart = 0;
++        for(i = 0; i < count;i++) {
++            if (b[i] == '@' ) {
++                pc[extrastart++] = '\\';
++                pc[extrastart++] = b[i];
++            } else if (b[i] == '\n') {
++                pc[extrastart++] = '\\';
++                pc[extrastart++] = 'n';
++            } else if (b[i] == '\\') {
++                pc[extrastart++] = '\\';
++                pc[extrastart++] = '\\';
++            } else {
++                pc[extrastart++] = b[i];
++            }
++        }
++        pc[extrastart++] = 0;
++        free(b);
++        b = pc;
++    }
++    fprintf (aux_info_file, "%s",b);
++    fflush(aux_info_file);
++    free(b);
++}
++
++void gen_parse_info_printf(const char *fmt, ...) {
++    va_list ap; 
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    va_start (ap, fmt);
++    vfprintf(aux_info_file, fmt, ap);
++    va_end (ap);
++    fflush(aux_info_file);
++}
++
++void gen_parse_info_init (struct cpp_parse_info_callbacks *cb) {
++    cb->src_line = 1;
++}
++
++void gen_parse_info_updateloc (struct cpp_parse_info_callbacks *cb, source_location src_loc, int force) {
++    const struct line_map *map = linemap_lookup (&line_table, src_loc);
++    int current = SOURCE_LINE (map, src_loc);
++
++    if (!(flag_gen_parse_info && aux_info_file))
++	return;
++    
++    /*fprintf(aux_info_file,"%d=>%d\n",cb->src_line,current);*/
++    if ((!force) && current >= cb->src_line && current < cb->src_line + 8) {
++        while (current > cb->src_line) {
++	    fprintf(aux_info_file,"\n");
++	    cb->src_line++;
++	}
++    } else {
++	size_t to_file_len = strlen (map->to_file);
++	unsigned char *to_file_quoted =
++	    (unsigned char *) alloca (to_file_len * 4 + 1);
++	unsigned char *p;
++	*to_file_quoted = 0;
++	p = cpp_quote_string (to_file_quoted,
++			    (unsigned char *) map->to_file, to_file_len);
++	*p = '\0';
++	cb->src_line = current;
++	fprintf(aux_info_file,"# %d %s\n",current,to_file_quoted);
++    }
++    fflush(aux_info_file);
++}
++
++
++
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-parser.c gcc-4.2.1/gcc/c-parser.c
+--- gcc-4.2.1.ori/gcc/c-parser.c	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c-parser.c	2014-03-13 18:59:10 +0000
+@@ -58,6 +58,10 @@
+ #include "target.h"
+ #include "cgraph.h"
+ 
++#include "cpplib.h"
++#include "../libcpp/internal.h"
++#include "c-ppoutput.h"
++
+ 
+ /* Miscellaneous data and functions needed for the parser.  */
+ 
+@@ -299,6 +303,11 @@
+   tree value;
+   /* The location at which this token was found.  */
+   location_t location;
++
++  int tokid;
++  struct cpp_macro *macro;
++  
++  
+ } c_token;
+ 
+ /* A parser structure recording information about the state and
+@@ -333,7 +342,7 @@
+ {
+   timevar_push (TV_LEX);
+ 
+-  token->type = c_lex_with_flags (&token->value, &token->location, NULL);
++  token->type = c_lex_with_flags (&token->value, &token->location, NULL, &token->tokid, &token->macro);
+   token->id_kind = C_ID_NONE;
+   token->keyword = RID_MAX;
+   token->pragma_kind = PRAGMA_NONE;
+@@ -377,11 +386,20 @@
+ 	decl = lookup_name (token->value);
+ 	if (decl)
+ 	  {
++		  if (DECL_DEP(decl)) {
++			  if (flag_gen_dep_info) {
++				  dep_add_top(DECL_DEP(decl));
++			  }
++		  }
++		  
+ 	    if (TREE_CODE (decl) == TYPE_DECL)
+ 	      {
++		      
+ 		token->id_kind = C_ID_TYPENAME;
+ 		break;
+ 	      }
++
++	    
+ 	  }
+ 	else if (c_dialect_objc ())
+ 	  {
+@@ -637,6 +655,12 @@
+   gcc_assert (parser->tokens[0].type != CPP_EOF);
+   gcc_assert (!parser->in_pragma || parser->tokens[0].type != CPP_PRAGMA_EOL);
+   gcc_assert (parser->error || parser->tokens[0].type != CPP_PRAGMA);
++
++  if (flag_gen_dep_info) {
++	  if (parser->tokens[0].macro)
++		  mdep_add_top(parser->tokens[0].macro);
++  }
++	  
+   if (parser->tokens_avail == 2)
+     parser->tokens[0] = parser->tokens[1];
+   parser->tokens_avail--;
+@@ -983,8 +1007,8 @@
+ static void c_parser_declaration_or_fndef (c_parser *, bool, bool, bool, bool);
+ static void c_parser_declspecs (c_parser *, struct c_declspecs *, bool, bool,
+ 				bool);
+-static struct c_typespec c_parser_enum_specifier (c_parser *);
+-static struct c_typespec c_parser_struct_or_union_specifier (c_parser *);
++static struct c_typespec c_parser_enum_specifier (c_parser *, int *);
++static struct c_typespec c_parser_struct_or_union_specifier (c_parser *, int * );
+ static tree c_parser_struct_declaration (c_parser *);
+ static struct c_typespec c_parser_typeof_specifier (c_parser *);
+ static struct c_declarator *c_parser_declarator (c_parser *, bool, c_dtr_syn,
+@@ -1078,9 +1102,17 @@
+      empty
+ */
+ 
++
++
+ static void
+ c_parser_translation_unit (c_parser *parser)
+ {
++	int i; 
++	memset((char *)&main_dep,0,sizeof(main_dep));
++	memset((char *)&real_dep,0,sizeof(real_dep));
++	memset((char *)&stack_dep,0,sizeof(real_dep));
++	
++	
+   if (c_parser_next_token_is (parser, CPP_EOF))
+     {
+       if (pedantic)
+@@ -1097,6 +1129,39 @@
+ 	}
+       while (c_parser_next_token_is_not (parser, CPP_EOF));
+     }
++  if (flag_gen_dep_info) {
++	  FILE *f = stderr;
++	  if (aux_info_file && flag_gen_dep_info)
++		  f = aux_info_file;
++	
++	  fprintf(f,"\n<dep-info:\n");
++	  
++	  for (i = 0; i < main_dep.dep_cnt; i++) {
++		  int j; struct dep_decl *d = main_dep.dep[i];
++		  fprintf(f," dep %d: ",d->depid);
++		  fprintf (f, "[%s:%d-",LOCATION_FILE(d->start),LOCATION_LINE(d->start));
++		  fprintf (f, "%s:%d]\n  m:[",LOCATION_FILE(d->end),LOCATION_LINE(d->end));
++		  for (j = 0; j < d->mdep_cnt; j++) {
++			  cpp_macro *m = d->mdep[j];
++			  fprintf(f," %d(%s)",m->macroid,m->name ? m->name : "<NULL>");
++		  }
++		  fprintf(f,"]\n  d:[");
++		  for (j = 0; j < d->dep_cnt; j++) {
++			  fprintf(f," %d",d->dep[j]->depid);
++		  }
++		  fprintf(f,"]\n");
++		  
++	  }
++	  fprintf(f,"Macro dependencies after:\n");
++	  print_macro_dep(f);
++	  
++	  fprintf(f,"\ndep-info>\n");
++	  
++	
++
++  }
++
++  
+ }
+ 
+ /* Parse an external declaration (C90 6.7, C99 6.9).
+@@ -1189,7 +1254,16 @@
+       /* A declaration or a function definition.  We can only tell
+ 	 which after parsing the declaration specifiers, if any, and
+ 	 the first declarator.  */
++	    {struct dep_decl *d = 0;
++	      if (flag_gen_dep_info) {
++		      d = dep_open();
++		      dep_add(&stack_dep, d);
++	      }
+       c_parser_declaration_or_fndef (parser, true, true, false, true);
++	      if (flag_gen_dep_info) {
++		      dep_pop(dep_close(d, 0));
++	      }
++	    }
+       break;
+     }
+ }
+@@ -1252,6 +1326,16 @@
+    declaration:
+      threadprivate-directive  */
+ 
++#define DEPOPEN(d) if (flag_gen_dep_info) {	\
++		d = dep_open();			\
++		dep_add(&stack_dep, d);		\
++	}
++
++#define DEPCLOSE(d) if (flag_gen_dep_info) {	\
++		dep_pop(dep_close(d, 0));	\
++	}
++
++
+ static void
+ c_parser_declaration_or_fndef (c_parser *parser, bool fndef_ok, bool empty_ok,
+ 			       bool nested, bool start_attr_ok)
+@@ -1260,23 +1344,29 @@
+   tree prefix_attrs;
+   tree all_prefix_attrs;
+   bool diagnosed_no_specs = false;
++  struct dep_decl *dep = 0;
++
++  DEPOPEN(dep);
+ 
+   specs = build_null_declspecs ();
+   c_parser_declspecs (parser, specs, true, true, start_attr_ok);
+   if (parser->error)
+     {
+       c_parser_skip_to_end_of_block_or_statement (parser);
++      DEPCLOSE(dep);
+       return;
+     }
+   if (nested && !specs->declspecs_seen_p)
+     {
+       c_parser_error (parser, "expected declaration specifiers");
+       c_parser_skip_to_end_of_block_or_statement (parser);
++      DEPCLOSE(dep);
+       return;
+     }
+   finish_declspecs (specs);
+   if (c_parser_next_token_is (parser, CPP_SEMICOLON))
+     {
++	
+       if (empty_ok)
+ 	shadow_tag (specs);
+       else
+@@ -1285,6 +1375,7 @@
+ 	  pedwarn ("empty declaration");
+ 	}
+       c_parser_consume_token (parser);
++      DEPCLOSE(dep);
+       return;
+     }
+   pending_xref_error ();
+@@ -1305,6 +1396,7 @@
+       if (declarator == NULL)
+ 	{
+ 	  c_parser_skip_to_end_of_block_or_statement (parser);
++	  DEPCLOSE(dep);
+ 	  return;
+ 	}
+       if (c_parser_next_token_is (parser, CPP_EQ)
+@@ -1345,6 +1437,8 @@
+ 		{
+ 		  maybe_warn_string_init (TREE_TYPE (d), init);
+ 		  finish_decl (d, init.value, asm_name);
++		  DECL_DEP(d) = dep;
++		  
+ 		}
+ 	    }
+ 	  else
+@@ -1352,8 +1446,11 @@
+ 	      tree d = start_decl (declarator, specs, false,
+ 				   chainon (postfix_attrs,
+ 					    all_prefix_attrs));
+-	      if (d)
++	      if (d) {     
+ 		finish_decl (d, NULL_TREE, asm_name);
++		DECL_DEP(d) = dep;
++	      }
++	      
+ 	    }
+ 	  if (c_parser_next_token_is (parser, CPP_COMMA))
+ 	    {
+@@ -1368,12 +1465,14 @@
+ 	  else if (c_parser_next_token_is (parser, CPP_SEMICOLON))
+ 	    {
+ 	      c_parser_consume_token (parser);
++	      DEPCLOSE(dep);
+ 	      return;
+ 	    }
+ 	  else
+ 	    {
+ 	      c_parser_error (parser, "expected %<,%> or %<;%>");
+ 	      c_parser_skip_to_end_of_block_or_statement (parser);
++	      DEPCLOSE(dep);
+ 	      return;
+ 	    }
+ 	}
+@@ -1382,6 +1481,7 @@
+ 	  c_parser_error (parser, "expected %<=%>, %<,%>, %<;%>, "
+ 			  "%<asm%> or %<__attribute__%>");
+ 	  c_parser_skip_to_end_of_block_or_statement (parser);
++	  DEPCLOSE(dep);
+ 	  return;
+ 	}
+       /* Function definition (nested or otherwise).  */
+@@ -1420,7 +1520,22 @@
+       DECL_SOURCE_LOCATION (current_function_decl)
+ 	= c_parser_peek_token (parser)->location;
+       store_parm_decls ();
++      if (flag_gen_parse_info && aux_info_file) {
++
++	      fprintf (aux_info_file, "%d(@%d) == func%s [",specs->tokid, DECL_DECLID(current_function_decl), TREE_PUBLIC (current_function_decl) ? "^" : " ");
++	      fprintf (aux_info_file, "%s", DECL_NAME(current_function_decl) ? IDENTIFIER_POINTER(DECL_NAME(current_function_decl)) : "<abstrace>");
++	      fprintf (aux_info_file, "]\n");
++	      fflush(aux_info_file);
++
++	      fflush(aux_info_file);
++	      fprintf (aux_info_file, "{{+:%s:[\n", DECL_NAME(current_function_decl) ? IDENTIFIER_POINTER(DECL_NAME(current_function_decl)) : "<abstrace>");
++	      fflush(aux_info_file);
++      }
+       fnbody = c_parser_compound_statement (parser);
++      if (flag_gen_parse_info && aux_info_file) { 
++	      fprintf (aux_info_file, "}}-:%s:[\n", DECL_NAME(current_function_decl) ? IDENTIFIER_POINTER(DECL_NAME(current_function_decl)) : "<abstrace>");
++	      fflush(aux_info_file);
++      }
+       if (nested)
+ 	{
+ 	  tree decl = current_function_decl;
+@@ -1436,6 +1551,8 @@
+ 	}
+       break;
+     }
++  DEPCLOSE(dep);
++  
+ }
+ 
+ /* Parse an asm-definition (asm() outside a function body).  This is a
+@@ -1536,6 +1653,7 @@
+ c_parser_declspecs (c_parser *parser, struct c_declspecs *specs,
+ 		    bool scspec_ok, bool typespec_ok, bool start_attr_ok)
+ {
++  int tokid;
+   bool attrs_ok = start_attr_ok;
+   bool seen_type = specs->type_seen_p;
+   while (c_parser_next_token_is (parser, CPP_NAME)
+@@ -1548,6 +1666,7 @@
+ 	{
+ 	  tree value = c_parser_peek_token (parser)->value;
+ 	  c_id_kind kind = c_parser_peek_token (parser)->id_kind;
++	  tokid = c_parser_peek_token (parser)->tokid;
+ 	  /* This finishes the specifiers unless a type name is OK, it
+ 	     is declared as a type name and a type name hasn't yet
+ 	     been seen.  */
+@@ -1576,6 +1695,7 @@
+ 	      t.spec = objc_get_protocol_qualified_type (value, proto);
+ 	    }
+ 	  declspecs_add_type (specs, t);
++          specs->tokid = tokid;
+ 	  continue;
+ 	}
+       if (c_parser_next_token_is (parser, CPP_LESS))
+@@ -1633,6 +1753,7 @@
+ 	  t.kind = ctsk_resword;
+ 	  t.spec = c_parser_peek_token (parser)->value;
+ 	  declspecs_add_type (specs, t);
++	  specs->tokid = c_parser_peek_token (parser)->tokid;
+ 	  c_parser_consume_token (parser);
+ 	  break;
+ 	case RID_ENUM:
+@@ -1640,16 +1761,19 @@
+ 	    goto out;
+ 	  attrs_ok = true;
+ 	  seen_type = true;
+-	  t = c_parser_enum_specifier (parser);
++	  specs->tokid = c_parser_peek_token (parser)->tokid;
++	  t = c_parser_enum_specifier (parser,&specs->tokid);
+ 	  declspecs_add_type (specs, t);
+ 	  break;
+ 	case RID_STRUCT:
+ 	case RID_UNION:
++	  tokid = -1;
+ 	  if (!typespec_ok)
+ 	    goto out;
+ 	  attrs_ok = true;
+ 	  seen_type = true;
+-	  t = c_parser_struct_or_union_specifier (parser);
++	  specs->tokid = c_parser_peek_token (parser)->tokid;
++	  t = c_parser_struct_or_union_specifier (parser, &specs->tokid);
+ 	  declspecs_add_type (specs, t);
+ 	  break;
+ 	case RID_TYPEOF:
+@@ -1660,6 +1784,7 @@
+ 	    goto out;
+ 	  attrs_ok = true;
+ 	  seen_type = true;
++	  specs->tokid = c_parser_peek_token (parser)->tokid;
+ 	  t = c_parser_typeof_specifier (parser);
+ 	  declspecs_add_type (specs, t);
+ 	  break;
+@@ -1706,7 +1831,7 @@
+ */
+ 
+ static struct c_typespec
+-c_parser_enum_specifier (c_parser *parser)
++c_parser_enum_specifier (c_parser *parser, int *tokid)
+ {
+   struct c_typespec ret;
+   tree attrs;
+@@ -1717,6 +1842,7 @@
+   if (c_parser_next_token_is (parser, CPP_NAME))
+     {
+       ident = c_parser_peek_token (parser)->value;
++      *tokid = c_parser_peek_token (parser)->tokid;
+       c_parser_consume_token (parser);
+     }
+   if (c_parser_next_token_is (parser, CPP_OPEN_BRACE))
+@@ -1730,6 +1856,7 @@
+       c_parser_consume_token (parser);
+       while (true)
+ 	{
++            int valtok = -1;
+ 	  tree enum_id;
+ 	  tree enum_value;
+ 	  tree enum_decl;
+@@ -1742,6 +1869,7 @@
+ 	      break;
+ 	    }
+ 	  enum_id = c_parser_peek_token (parser)->value;
++          valtok = c_parser_peek_token (parser)->tokid;
+ 	  c_parser_consume_token (parser);
+ 	  if (c_parser_next_token_is (parser, CPP_EQ))
+ 	    {
+@@ -1750,7 +1878,8 @@
+ 	    }
+ 	  else
+ 	    enum_value = NULL_TREE;
+-	  enum_decl = build_enumerator (enum_id, enum_value);
++          
++	  enum_decl = build_enumerator (enum_id, enum_value, valtok);
+ 	  TREE_CHAIN (enum_decl) = values;
+ 	  values = enum_decl;
+ 	  seen_comma = false;
+@@ -1776,7 +1905,7 @@
+ 	}
+       postfix_attrs = c_parser_attributes (parser);
+       ret.spec = finish_enum (type, nreverse (values),
+-			      chainon (attrs, postfix_attrs));
++			      chainon (attrs, postfix_attrs),*tokid);
+       ret.kind = ctsk_tagdef;
+       return ret;
+     }
+@@ -1835,12 +1964,15 @@
+    when followed by a semicolon.)  */
+ 
+ static struct c_typespec
+-c_parser_struct_or_union_specifier (c_parser *parser)
++c_parser_struct_or_union_specifier (c_parser *parser, int *tokid)
+ {
+   struct c_typespec ret;
+-  tree attrs;
++  tree attrs; c_token *tok = c_parser_peek_token (parser);
+   tree ident = NULL_TREE;
+   enum tree_code code;
++  location_t  loc = tok->location;
++  struct dep_decl *dep = 0;
++  
+   switch (c_parser_peek_token (parser)->keyword)
+     {
+     case RID_STRUCT:
+@@ -1857,13 +1989,14 @@
+   if (c_parser_next_token_is (parser, CPP_NAME))
+     {
+       ident = c_parser_peek_token (parser)->value;
++      *tokid = c_parser_peek_token (parser)->tokid;
+       c_parser_consume_token (parser);
+     }
+   if (c_parser_next_token_is (parser, CPP_OPEN_BRACE))
+     {
+       /* Parse a struct or union definition.  Start the scope of the
+ 	 tag before parsing components.  */
+-      tree type = start_struct (code, ident);
++      tree type;
+       tree postfix_attrs;
+       /* We chain the components in reverse order, then put them in
+ 	 forward order at the end.  Each struct-declaration may
+@@ -1876,6 +2009,13 @@
+ 	 so we'll be minimizing the number of node traversals required
+ 	 by chainon.  */
+       tree contents = NULL_TREE;
++      
++      DEPOPEN(dep);
++      
++      type = start_struct (code, ident, loc);
++      
++      TYPE_LOCATION(type) = loc;
++
+       c_parser_consume_token (parser);
+       /* Handle the Objective-C @defs construct,
+ 	 e.g. foo(sizeof(struct{ @defs(ClassName) }));.  */
+@@ -1952,8 +2092,13 @@
+ 	}
+       postfix_attrs = c_parser_attributes (parser);
+       ret.spec = finish_struct (type, nreverse (contents),
+-				chainon (attrs, postfix_attrs));
++				chainon (attrs, postfix_attrs),*tokid);
++
++      TYPE_DEP(ret.spec) = dep;
++      
+       ret.kind = ctsk_tagdef;
++      
++      DEPCLOSE(dep);
+       return ret;
+     }
+   else if (!ident)
+@@ -5038,6 +5183,7 @@
+ {
+   struct c_expr expr, e1, e2, e3;
+   struct c_type_name *t1, *t2;
++  c_token *token;
+   switch (c_parser_peek_token (parser)->type)
+     {
+     case CPP_NUMBER:
+@@ -5071,10 +5217,11 @@
+       {
+ 	tree id = c_parser_peek_token (parser)->value;
+ 	location_t loc = c_parser_peek_token (parser)->location;
++	int tokid = c_parser_peek_token (parser)->tokid;
+ 	c_parser_consume_token (parser);
+ 	expr.value = build_external_ref (id,
+ 					 (c_parser_peek_token (parser)->type
+-					  == CPP_OPEN_PAREN), loc);
++					  == CPP_OPEN_PAREN), loc, tokid);
+ 	expr.original_code = ERROR_MARK;
+       }
+       break;
+@@ -5214,8 +5361,9 @@
+ 	       accept sub structure and sub array references.  */
+ 	    if (c_parser_next_token_is (parser, CPP_NAME))
+ 	      {
++                token = c_parser_peek_token (parser);
+ 		offsetof_ref = build_component_ref
+-		  (offsetof_ref, c_parser_peek_token (parser)->value);
++		    (offsetof_ref, c_parser_peek_token (parser)->value, token->tokid);
+ 		c_parser_consume_token (parser);
+ 		while (c_parser_next_token_is (parser, CPP_DOT)
+ 		       || c_parser_next_token_is (parser,
+@@ -5230,9 +5378,10 @@
+ 			    c_parser_error (parser, "expected identifier");
+ 			    break;
+ 			  }
++                        token = c_parser_peek_token (parser);
+ 			offsetof_ref = build_component_ref
+ 			  (offsetof_ref,
+-			   c_parser_peek_token (parser)->value);
++			   c_parser_peek_token (parser)->value, token->tokid);
+ 			c_parser_consume_token (parser);
+ 		      }
+ 		    else
+@@ -5474,6 +5623,7 @@
+ c_parser_postfix_expression_after_primary (c_parser *parser,
+ 					   struct c_expr expr)
+ {
++  c_token *token;
+   tree ident, idx, exprlist;
+   while (true)
+     {
+@@ -5513,11 +5663,13 @@
+ 	      expr.original_code = ERROR_MARK;
+ 	      return expr;
+ 	    }
++          token = c_parser_peek_token (parser);
+ 	  c_parser_consume_token (parser);
+-	  expr.value = build_component_ref (expr.value, ident);
++	  expr.value = build_component_ref (expr.value, ident, token->tokid);
+ 	  expr.original_code = ERROR_MARK;
+ 	  break;
+ 	case CPP_DEREF:
++          token = c_parser_peek_token (parser);
+ 	  /* Structure element reference.  */
+ 	  c_parser_consume_token (parser);
+ 	  expr = default_function_array_conversion (expr);
+@@ -5532,7 +5684,7 @@
+ 	    }
+ 	  c_parser_consume_token (parser);
+ 	  expr.value = build_component_ref (build_indirect_ref (expr.value,
+-								"->"), ident);
++								"->"), ident, token->tokid);
+ 	  expr.original_code = ERROR_MARK;
+ 	  break;
+ 	case CPP_PLUS_PLUS:
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-ppoutput.c gcc-4.2.1/gcc/c-ppoutput.c
+--- gcc-4.2.1.ori/gcc/c-ppoutput.c	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c-ppoutput.c	2014-03-13 18:59:10 +0000
+@@ -26,18 +26,14 @@
+ #include "tree.h"
+ #include "c-common.h"		/* For flags.  */
+ #include "c-pragma.h"		/* For parse_in.  */
++#include "c-tree.h"		/* For cb_include().  */
++#include "flags.h"		/* flag_gen_parse_info  */
+ 
+ /* Encapsulates state used to convert a stream of tokens into a text
+    file.  */
+-static struct
+-{
+-  FILE *outf;			/* Stream to write to.  */
+-  const cpp_token *prev;	/* Previous token.  */
+-  const cpp_token *source;	/* Source token for spacing.  */
+-  int src_line;			/* Line number currently being written.  */
+-  unsigned char printed;	/* Nonzero if something output at line.  */
+-  bool first_time;		/* pp_file_change hasn't been called yet.  */
+-} print;
++
++struct cppoutput cpp_print;
++#define print cpp_print
+ 
+ /* General output routines.  */
+ static void scan_translation_unit (cpp_reader *);
+@@ -53,8 +49,6 @@
+ static void cb_line_change (cpp_reader *, const cpp_token *, int);
+ static void cb_define (cpp_reader *, source_location, cpp_hashnode *);
+ static void cb_undef (cpp_reader *, source_location, cpp_hashnode *);
+-static void cb_include (cpp_reader *, source_location, const unsigned char *,
+-			const char *, int, const cpp_token **);
+ static void cb_ident (cpp_reader *, source_location, const cpp_string *);
+ static void cb_def_pragma (cpp_reader *, source_location);
+ static void cb_read_pch (cpp_reader *pfile, const char *name,
+@@ -92,6 +86,8 @@
+ init_pp_output (FILE *out_stream)
+ {
+   cpp_callbacks *cb = cpp_get_callbacks (parse_in);
++  cb->parse_info_cb.flag_gen_dep_info = flag_gen_dep_info;
++  cb->parse_info_cb.gen_dep_info_macro = 0;
+ 
+   if (!flag_no_output)
+     {
+@@ -155,6 +151,12 @@
+       if (token->type == CPP_EOF)
+ 	break;
+ 
++      if (CPP_OPTION (pfile, fpreprocessnewline)) {
++          if (token->flags & CPP_MACRO_NEWLINE) {
++              putc ('\n', print.outf);
++          }
++      }
++      
+       /* Subtle logic to output a space if and only if necessary.  */
+       if (avoid_paste)
+ 	{
+@@ -337,11 +339,16 @@
+   print.src_line++;
+ }
+ 
+-static void
++void
+ cb_include (cpp_reader *pfile ATTRIBUTE_UNUSED, source_location line,
+ 	    const unsigned char *dir, const char *header, int angle_brackets,
+ 	    const cpp_token **comments)
+ {
++  if (flag_gen_parse_info) {
++      struct cpp_callbacks *cb = cpp_get_callbacks (parse_in);
++      gen_parse_info_updateloc(&(cb->parse_info_cb),line,0);
++  }
++  else 
+   maybe_print_line (line);
+   if (angle_brackets)
+     fprintf (print.outf, "#%s <%s>", dir, header);
+@@ -456,3 +463,108 @@
+   fprintf (print.outf, "#pragma GCC pch_preprocess \"%s\"\n", name);
+   print.src_line++;
+ }
++
++
++struct dep_decl real_dep;
++struct dep_decl main_dep;
++struct dep_decl stack_dep;
++
++void gen_dep_info_macro(struct cpp_macro *m) {
++	m = 0;
++	if (stack_dep.dep_cnt) {
++		/*fprintf(stderr,"[%d] add %d<=%d\n", stack_dep.dep_cnt-1, stack_dep.dep[stack_dep.dep_cnt-1]->depid, m->macroid);*/
++		/*mdep_add(stack_dep.dep[stack_dep.dep_cnt-1], m);*/
++	}
++}
++
++void dep_pop(struct dep_decl *d0) {
++	if (stack_dep.dep_cnt == 0)
++		return;
++	if (--(stack_dep.dep_cnt) == 0) {
++		free(stack_dep.dep);
++		stack_dep.dep = 0;
++	}
++	d0 = 0;
++}
++
++void dep_add_top(struct dep_decl *d) {
++	if (stack_dep.dep_cnt){
++		dep_add(stack_dep.dep[stack_dep.dep_cnt-1], d);
++	}
++}	      
++
++void mdep_add_top(struct cpp_macro *m) {
++	if (stack_dep.dep_cnt){
++		mdep_add(stack_dep.dep[stack_dep.dep_cnt-1], m);
++	}
++}	      
++
++void dep_add(struct dep_decl *d0, struct dep_decl *d1) {
++	int cnt = d0->dep_cnt;
++	if (d0->dep_cnt++) {
++		d0->dep = (struct dep_decl **) xrealloc(d0->dep,d0->dep_cnt*sizeof(void*));
++	} else {
++		d0->dep = (struct dep_decl **) xmalloc(d0->dep_cnt*sizeof(void*));
++	}
++	d0->dep[cnt] = d1;
++}
++
++void mdep_add(struct dep_decl *d0, struct cpp_macro *m) {
++	int i;
++	for (i = 0; i < d0->mdep_cnt; i++) {
++		if (d0->mdep[i] == m)
++			break;
++	}
++	if (i == d0->mdep_cnt) {
++		int cnt = d0->mdep_cnt;
++		if (d0->mdep_cnt++) {
++			d0->mdep = (struct cpp_macro **) xrealloc(d0->mdep,d0->mdep_cnt*sizeof(void*));
++		} else {
++			d0->mdep = (struct cpp_macro **) xmalloc(d0->mdep_cnt*sizeof(void*));
++		}
++		d0->mdep[cnt] = m;
++		/*fprintf(stderr,"add at %d\n",cnt);*/
++	}
++}
++
++
++int depid = 1;
++struct dep_decl *dep_open(void) {
++	struct dep_decl *d;
++	d = (struct dep_decl *) xmalloc(sizeof(struct dep_decl));
++	memset((char *)d,0,sizeof(struct dep_decl));
++	dep_add(&main_dep,d);
++	d->depid = depid++;
++	d->start = input_location;
++	d->end = input_location;
++	return d;
++}
++
++struct dep_decl *dep_close(struct dep_decl *d, tree decl) {
++	d->decl = decl;
++	d->end = input_location;
++	return d;
++}
++
++extern int _cpp_all_macros_cnt;
++extern struct cpp_macro **_cpp_all_macros;
++
++void print_macro_dep(FILE *f );
++void print_macro_dep(FILE *f ) {
++	int i, j;
++	for(i = 0; i < _cpp_all_macros_cnt; i++) {
++		struct cpp_macro *m = _cpp_all_macros[i];
++		location_t loc;
++		loc = gen_parse_info_src2loc(m->line);
++		if (1 || m->line != 2) {
++			fprintf(f," mac %d (%s): ",m->macroid, m->name ? m->name : "<NULL>"); fflush(f);
++			fprintf (f, "[%s:%d]\n [",LOCATION_FILE(loc),LOCATION_LINE(loc)); fflush(f);
++			for (j = 0; j < m->depend_cnt; j++) {
++				cpp_macro *mac = m->depend[j];
++				fprintf(f," %d(%s)",mac->macroid, mac->name ? mac->name : "<NULL>"); fflush(f);
++			} 
++			fprintf(f,"]\n"); fflush(f);
++		}  
++	}
++}
++
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-ppoutput.h gcc-4.2.1/gcc/c-ppoutput.h
+--- gcc-4.2.1.ori/gcc/c-ppoutput.h	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/c-ppoutput.h	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,39 @@
++#ifndef PP_OUT_P_H
++#define PP_OUT_P_H
++
++#include "config.h"
++#include "system.h"
++#include "coretypes.h"
++#include "tm.h"
++#include "cpplib.h"
++#include "../libcpp/internal.h"
++#include "tree.h"
++#include "c-common.h"		/* For flags.  */
++#include "c-pragma.h"		/* For parse_in.  */
++#include "c-tree.h"		/* For cb_include().  */
++#include "flags.h"		/* flag_gen_parse_info  */
++
++
++extern struct dep_decl real_dep;
++extern struct dep_decl main_dep;
++extern struct dep_decl stack_dep;
++
++void gen_dep_info_macro(struct cpp_macro *m) ;
++void dep_pop(struct dep_decl *d0) ;
++void dep_add_top(struct dep_decl *d) ;
++void mdep_add_top(struct cpp_macro *m) ;
++
++void dep_add(struct dep_decl *d0, struct dep_decl *d1) ;
++
++void mdep_add(struct dep_decl *d0, struct cpp_macro *m) ;
++
++
++extern int depid ;
++struct dep_decl *dep_open(void) ;
++
++struct dep_decl *dep_close(struct dep_decl *d, tree decl) ;
++
++void print_macro_dep(FILE *f ) ;
++
++
++#endif
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-pragma.h gcc-4.2.1/gcc/c-pragma.h
+--- gcc-4.2.1.ori/gcc/c-pragma.h	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c-pragma.h	2014-03-13 18:59:10 +0000
+@@ -97,7 +97,7 @@
+ /* This is not actually available to pragma parsers.  It's merely a
+    convenient location to declare this function for c-lex, after
+    having enum cpp_ttype declared.  */
+-extern enum cpp_ttype c_lex_with_flags (tree *, location_t *, unsigned char *);
++extern enum cpp_ttype c_lex_with_flags (tree *, location_t *, unsigned char *, int *, struct cpp_macro **);
+ 
+ /* If 1, then lex strings into the execution character set.
+    If 0, lex strings into the host character set.
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-tree.h gcc-4.2.1/gcc/c-tree.h
+--- gcc-4.2.1.ori/gcc/c-tree.h	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c-tree.h	2014-03-13 18:59:10 +0000
+@@ -282,6 +282,10 @@
+   BOOL_BITFIELD volatile_p : 1;
+   /* Whether "restrict" was specified.  */
+   BOOL_BITFIELD restrict_p : 1;
++
++    int tokid;
++    location_t loc;
++    int typedef_declid;
+ };
+ 
+ /* The various kinds of declarators in C.  */
+@@ -432,6 +436,44 @@
+ 
+ /* in c-aux-info.c */
+ extern void gen_aux_info_record (tree, int, int, int);
++extern void gen_aux_info_type (tree);
++
++/* in c-parse-info.c */
++extern location_t gen_parse_info_src2loc (source_location );
++extern void gen_parse_info_header (int, source_location, int *, int);
++extern void gen_parse_info_loc (source_location);
++extern void gen_parse_info_loc_line (source_location);
++extern void gen_parse_info_type (tree);
++extern void gen_parse_info_token (const cpp_token *);
++extern void gen_parse_info_char(const char*);
++extern void gen_parse_info_write(const char*, int);
++extern void gen_parse_info_printf(const char *fmt, ...);
++extern void gen_parse_info_header_direct (int , source_location , int *, int, int );
++extern void gen_parse_info_header_path (int *ar, int arcnt, int, int);
++extern void gen_parse_info_loc_t (location_t loc);
++extern void gen_parse_info_path_direct (int *ar, int arcnt, int dir, int copen, int cclose);
++extern void gen_parse_info_init (struct cpp_parse_info_callbacks *cb);
++extern void gen_parse_info_updateloc (struct cpp_parse_info_callbacks *cb, source_location src_loc, int force);
++
++extern tree gen_parse_info_getrealtype (tree t, int*);
++
++
++/* in c-ppoutput.c */
++struct cppoutput
++{
++  FILE *outf;			/* Stream to write to.  */
++  const cpp_token *prev;	/* Previous token.  */
++  const cpp_token *source;	/* Source token for spacing.  */
++  int src_line;			/* Line number currently being written.  */
++  unsigned char printed;	/* Nonzero if something output at line.  */
++  bool first_time;		/* pp_file_change hasn't been called yet.  */
++};
++extern struct cppoutput cpp_print;
++extern void
++cb_include (cpp_reader *pfile ATTRIBUTE_UNUSED, source_location line,
++	    const unsigned char *dir, const char *header, int angle_brackets,
++	    const cpp_token **comments);
++
+ 
+ /* in c-decl.c */
+ extern struct obstack parser_obstack;
+@@ -450,7 +492,7 @@
+ extern int quals_from_declspecs (const struct c_declspecs *);
+ extern struct c_declarator *build_array_declarator (tree, struct c_declspecs *,
+ 						    bool, bool);
+-extern tree build_enumerator (tree, tree);
++extern tree build_enumerator (tree, tree, int);
+ extern tree check_for_loop_decls (void);
+ extern void mark_forward_parm_decls (void);
+ extern void declare_parm_level (void);
+@@ -459,9 +501,9 @@
+ extern tree define_label (location_t, tree);
+ extern void c_maybe_initialize_eh (void);
+ extern void finish_decl (tree, tree, tree);
+-extern tree finish_enum (tree, tree, tree);
++extern tree finish_enum (tree, tree, tree, int);
+ extern void finish_function (void);
+-extern tree finish_struct (tree, tree, tree);
++extern tree finish_struct (tree, tree, tree, int);
+ extern struct c_arg_info *get_parm_info (bool);
+ extern tree grokfield (struct c_declarator *, struct c_declspecs *, tree);
+ extern tree groktypename (struct c_type_name *);
+@@ -483,7 +525,7 @@
+ extern int  start_function (struct c_declspecs *, struct c_declarator *, tree);
+ extern tree start_decl (struct c_declarator *, struct c_declspecs *, bool,
+ 			tree);
+-extern tree start_struct (enum tree_code, tree);
++extern tree start_struct (enum tree_code, tree, location_t );
+ extern void store_parm_decls (void);
+ extern void store_parm_decls_from (struct c_arg_info *);
+ extern tree xref_tag (enum tree_code, tree);
+@@ -539,9 +581,9 @@
+ extern tree c_type_promotes_to (tree);
+ extern struct c_expr default_function_array_conversion (struct c_expr);
+ extern tree composite_type (tree, tree);
+-extern tree build_component_ref (tree, tree);
++extern tree build_component_ref (tree, tree, int);
+ extern tree build_array_ref (tree, tree);
+-extern tree build_external_ref (tree, int, location_t);
++extern tree build_external_ref (tree, int, location_t, int);
+ extern void pop_maybe_used (bool);
+ extern struct c_expr c_expr_sizeof_expr (struct c_expr);
+ extern struct c_expr c_expr_sizeof_type (struct c_type_name *);
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c-typeck.c gcc-4.2.1/gcc/c-typeck.c
+--- gcc-4.2.1.ori/gcc/c-typeck.c	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c-typeck.c	2014-03-13 18:59:10 +0000
+@@ -45,6 +45,7 @@
+ #include "tree-iterator.h"
+ #include "tree-gimple.h"
+ #include "tree-flow.h"
++#include "c-pragma.h"
+ 
+ /* Possible cases of implicit bad conversions.  Used to select
+    diagnostic messages in convert_for_assignment.  */
+@@ -1793,7 +1794,7 @@
+    structure or union value DATUM.  COMPONENT is an IDENTIFIER_NODE.  */
+ 
+ tree
+-build_component_ref (tree datum, tree component)
++build_component_ref (tree datum, tree component, int tokid)
+ {
+   tree type = TREE_TYPE (datum);
+   enum tree_code code = TREE_CODE (type);
+@@ -1839,6 +1840,14 @@
+ 	  quals |= TYPE_QUALS (TREE_TYPE (datum));
+ 	  subtype = c_build_qualified_type (TREE_TYPE (subdatum), quals);
+ 
++          if (flag_gen_parse_info && aux_info_file) {
++              tree ty = TREE_TYPE (subdatum);
++              fprintf (aux_info_file, "%d <=[ {ref} (%s) type [",tokid, IDENTIFIER_POINTER (component));
++	      gen_parse_info_type (ty);
++              fprintf (aux_info_file, "] typdecl at: %s:%d\n",TYPE_FILENAME(ty),TYPE_LINENO(ty));
++	      fflush(aux_info_file);
++          }
++	  
+ 	  ref = build3 (COMPONENT_REF, subtype, datum, subdatum,
+ 			NULL_TREE);
+ 	  if (TREE_READONLY (datum) || TREE_READONLY (subdatum))
+@@ -2047,7 +2056,7 @@
+    whether this will be used for a function call.  LOC is the source
+    location of the identifier.  */
+ tree
+-build_external_ref (tree id, int fun, location_t loc)
++build_external_ref (tree id, int fun, location_t loc, int tokid)
+ {
+   tree ref;
+   tree decl = lookup_name (id);
+@@ -2110,6 +2119,30 @@
+ 	DECL_NONLOCAL (ref) = 1;
+     }
+ 
++  if (flag_gen_parse_info && aux_info_file) {
++      tree ty; const char *refstr = " ref "; int cdeclid = 0;
++      if (TREE_CODE (ref) == FUNCTION_DECL) {
++	  refstr = "(ref)";
++      }
++      if (TREE_CODE (ref) == VAR_DECL ||
++          TREE_CODE (ref) == FUNCTION_DECL ||
++          TREE_CODE (ref) == PARM_DECL) {
++          cdeclid = DECL_DECLID(ref);
++      }
++      fprintf (aux_info_file, "%d(@%d) <=[ %s%s (%s) ",tokid, cdeclid, refstr, DECL_EXTERNAL(ref) ? "^" : " ", IDENTIFIER_POINTER (id));
++      if (decl) {
++          fprintf (aux_info_file, " decl at %s:%d ",LOCATION_FILE(DECL_SOURCE_LOCATION (decl)),LOCATION_LINE(DECL_SOURCE_LOCATION (decl)));
++      }
++      if (decl && (ty = TREE_TYPE (decl))) {
++	  fprintf (aux_info_file, " type [");
++	  gen_parse_info_type (ty);
++	  fprintf (aux_info_file, "] typdecl at: %s:%d \n",TYPE_FILENAME(ty),TYPE_LINENO(ty));
++      } else {
++          fprintf (aux_info_file, " type <unknown> \n");
++      }
++      fflush(aux_info_file);
++  }
++  
+   return ref;
+ }
+ 
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/c.opt gcc-4.2.1/gcc/c.opt
+--- gcc-4.2.1.ori/gcc/c.opt	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/c.opt	2014-03-13 18:59:10 +0000
+@@ -49,6 +49,10 @@
+ C ObjC C++ ObjC++
+ Do not discard comments in macro expansions
+ 
++CCC
++C ObjC C++ ObjC++
++Do not discard spaces during preprocessing
++
+ D
+ C ObjC C++ ObjC++ Joined Separate
+ -D<macro>[=<val>]	Define a <macro> with <val> as its value.  If just <macro> is given, <val> is taken to be 1
+@@ -527,6 +531,10 @@
+ C++ ObjC++
+ Recognize GNU-defined keywords
+ 
++fdep-info
++Common Report Var(flag_gen_dep_info)
++Generate dependency tree
++
+ fgnu-runtime
+ ObjC ObjC++
+ Generate code for GNU runtime environment
+@@ -647,6 +655,10 @@
+ C ObjC C++ ObjC++
+ Treat the input file as already preprocessed
+ 
++fpreprocessnewline
++C ObjC C++ ObjC++
++Output newline in macro definition
++
+ freplace-objc-classes
+ ObjC ObjC++
+ Used in Fix-and-Continue mode to indicate that object files may be swapped in at runtime
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/common.opt gcc-4.2.1/gcc/common.opt
+--- gcc-4.2.1.ori/gcc/common.opt	2014-03-13 18:58:47 +0000
++++ gcc-4.2.1/gcc/common.opt	2014-03-13 18:59:10 +0000
+@@ -200,12 +200,52 @@
+ aux-info=
+ Common Joined
+ 
++ftrace-funcs
++Common Separate
++-ftrace-funcs <file>	Emit default weak trace functions to <file>
++
++ftrace-funcs=
++Common Joined
++
++ftrace-type
++Common Separate
++-ftrace-type <file>	Which kind of tracer trace_out_none,trace_out_all
++
++ftrace-type=
++Common Joined
++
+ auxbase
+ Common Separate
+ 
+ auxbase-strip
+ Common Separate
+ 
++fparse-info-file=
++Common Joined
++
++fparse-info-file
++Common Separate
++-fparse-info-file <file>	Auto generated parseinfo file suggestion
++
++fparse-info=
++Common Joined
++
++fparse-info
++Common Separate
++-fparse-info <file>	Emit parse information into <file>
++
++fparse-id=
++Common RejectNegative Joined UInteger
++-fparse-id=<number>	set parseinfo id to <number>
++
++fhtmltag-fid=
++Common RejectNegative Joined UInteger
++-htmltag-fid=<number>	set htmltag fid to <number>
++
++fhtmltag-linkid=
++Common RejectNegative Joined UInteger
++-htmltag-linkid=<number>	set htmltag linkid to <number>
++
+ d
+ Common Joined
+ -d<letters>	Enable dumps from specific passes of the compiler
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/cp/Make-lang.in gcc-4.2.1/gcc/cp/Make-lang.in
+--- gcc-4.2.1.ori/gcc/cp/Make-lang.in	2014-03-13 18:58:53 +0000
++++ gcc-4.2.1/gcc/cp/Make-lang.in	2014-03-13 18:59:10 +0000
+@@ -75,7 +75,7 @@
+ CXX_C_OBJS = attribs.o c-common.o c-format.o c-pragma.o c-semantics.o c-lex.o \
+ 	c-dump.o $(CXX_TARGET_OBJS) c-pretty-print.o c-opts.o c-pch.o \
+ 	c-incpath.o cppdefault.o c-ppoutput.o c-cppbuiltin.o prefix.o \
+-	c-gimplify.o c-omp.o tree-inline.o
++	c-gimplify.o c-omp.o tree-inline.o c-parse-info.o c-aux-info.o
+ 
+ # Language-specific object files for C++ and Objective C++.
+ CXX_AND_OBJCXX_OBJS = cp/call.o cp/decl.o cp/expr.o cp/pt.o cp/typeck2.o \
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/cp/parser.c gcc-4.2.1/gcc/cp/parser.c
+--- gcc-4.2.1.ori/gcc/cp/parser.c	2014-03-13 18:58:53 +0000
++++ gcc-4.2.1/gcc/cp/parser.c	2014-03-13 18:59:10 +0000
+@@ -413,7 +413,7 @@
+ 
+    /* Get a new token from the preprocessor.  */
+   token->type
+-    = c_lex_with_flags (&token->u.value, &token->location, &token->flags);
++    = c_lex_with_flags (&token->u.value, &token->location, &token->flags, 0, 0);
+   token->input_file_stack_index = input_file_stack_tick;
+   token->keyword = RID_MAX;
+   token->pragma_kind = PRAGMA_NONE;
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/flags.h gcc-4.2.1/gcc/flags.h
+--- gcc-4.2.1.ori/gcc/flags.h	2014-03-13 18:58:53 +0000
++++ gcc-4.2.1/gcc/flags.h	2014-03-13 18:59:10 +0000
+@@ -163,6 +163,12 @@
+ 
+ extern int flag_gen_aux_info;
+ 
++/* Dump pars info to .X file */
++
++extern int flag_gen_parse_info;
++extern int flag_gen_dep_info;
++extern int flag_gen_parse_id;
++
+ /* Nonzero means suppress output of instruction numbers and line number
+    notes in debugging dumps.  */
+ 
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/gcc.c gcc-4.2.1/gcc/gcc.c
+--- gcc-4.2.1.ori/gcc/gcc.c	2014-03-13 18:58:53 +0000
++++ gcc-4.2.1/gcc/gcc.c	2014-03-13 18:59:10 +0000
+@@ -770,8 +770,8 @@
+    therefore no dependency entry, confuses make into thinking a .o
+    file that happens to exist is up-to-date.  */
+ static const char *cpp_unique_options =
+-"%{C|CC:%{!E:%eGCC does not support -C or -CC without -E}}\
+- %{!Q:-quiet} %{nostdinc*} %{C} %{CC} %{v} %{I*&F*} %{P} %I\
++"%{C|CC|CCC:%{!E:%eGCC does not support -C, -CC or -CCC without -E}}\
++ %{!Q:-quiet} %{nostdinc*} %{C} %{CC} %{CCC} %{v} %{I*&F*} %{P} %I\
+  %{MD:-MD %{!o:%b.d}%{o*:%.d%*}}\
+  %{MMD:-MMD %{!o:%b.d}%{o*:%.d%*}}\
+  %{M} %{MM} %{MF*} %{MG} %{MP} %{MQ*} %{MT*}\
+@@ -800,6 +800,7 @@
+ "%{pg:%{fomit-frame-pointer:%e-pg and -fomit-frame-pointer are incompatible}}\
+  %1 %{!Q:-quiet} -dumpbase %B %{d*} %{m*} %{a*}\
+  %{c|S:%{o*:-auxbase-strip %*}%{!o*:-auxbase %b}}%{!c:%{!S:-auxbase %b}}\
++ -fparse-info-file=%i.pinfo \
+  %{g*} %{O*} %{W*&pedantic*} %{w} %{std*&ansi&trigraphs}\
+  %{v:-version} %{pg:-p} %{p} %{f*} %{undef}\
+  %{Qn:-fno-ident} %{--help:--help}\
+@@ -1070,6 +1071,7 @@
+    {"--combine", "-combine", 0},
+    {"--comments", "-C", 0},
+    {"--comments-in-macros", "-CC", 0},
++   {"--space-as-comments", "-CCC", 0},
+    {"--compile", "-c", 0},
+    {"--debug", "-g", "oj"},
+    {"--define-macro", "-D", "aj"},
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/gcc.pre gcc-4.2.1/gcc/gcc.pre
+--- gcc-4.2.1.ori/gcc/gcc.pre	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/gcc.pre	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,175 @@
++#!/bin/sh
++#
++# allow us to do flat processing if the flag -Wl,-elf2flt or -elf2flt to
++# the 'C' compiler or linker respectively
++#
++# uses the env. var FLTFLAGS as extra parameters to pass to elf2flt
++# arguments given like -Wl,-elf2flt="-b 10000 -v" are given before FLTFLAGS
++#
++# Copyright (C) 2002,2003 David McCullough <davidm@snapgear.com>
++# Copyright (C) 2000, Lineo. davidm@lineo.com
++#
++# This is Free Software, under the GNU Public Licence v2 or greater.
++#
++
++LINKER="$0.real"            # the original renamed-linker
++ELF2FLT="`expr $0 : '\(.*\)ld'`elf2flt"
++TOOLDIR="`dirname $0`"      # let gcc find the tools for us
++LDSCRIPTPATH="${TOOLDIR}/../sparc-linux/lib"		# and the scripts
++SHARED_ID=""
++NEWLDSCRIPT=""
++
++# check TOOLDIR from prefix/bin/ or prefix/target-alias/bin/
++[ -d "${TOOLDIR}/../sparc-linux/lib" ] || LDSCRIPTPATH="${TOOLDIR}/../lib"
++
++#
++# if we have the elf2flt options, run it
++#
++
++if expr "$*" : ".*-elf2flt.*" > /dev/null
++then
++	ARG1=
++	ARG2=
++	OFILE="a.out"
++	PIC=
++	SDIRS=
++	LDSCRIPT=
++	FINAL="yes"
++	FINAL_ONLY=
++	MOVDAT=
++	VERBOSE=
++
++	while [ $# -ne 0 ]
++	do
++		case "$1" in
++
++		-elf2flt) ;;                           # we already know this
++		-elf2flt*)FLTFLAGS="`expr \"$1\" : '-elf2flt=\(.*\)'` $FLTFLAGS";; 
++
++		-move-rodata)
++		          MOVDAT="y";;                 # Put rodata in ROM if possible
++			 
++		-shared-lib-id)
++		          shift; SHARED_ID="$1";;      # Shared library ID
++
++		-o)       shift; OFILE="$1";;          # the final outfile
++		-o*)      OFILE="`expr \"$1\" : '-o\(.*\)'`";;
++
++		-T)       shift; LDSCRIPT="$1";;       # they have a linker script
++		-c)       shift; LDSCRIPT="$1";;
++
++		-L)       ARG1="$ARG1 $1"              # remember search dirs
++		          shift;
++				  ARG1="$ARG1 $1"
++				  SDIRS="$SDIRS -L$1"
++				  ;;
++		-L*)      ARG1="$ARG1 $1"; SDIRS="$SDIRS $1";;
++
++		-EB)      ARG1="$ARG1 $1"; SDIRS="$SDIRS $1";; # arm big endian
++
++		-relax)   ;;                           # eat this for microblaze
++
++		-r|-Ur)   FINAL=""                     # this is not a final link
++		          ARG1="$ARG1 $1"
++				  ;;
++
++		-v)       ARG1="$ARG1 $1"
++				  VERBOSE="y"
++				  ;;
++
++		-m)       shift; EMUL="-m $1";;        # ld emulations for h8300
++		-m*)      EMUL=$1;;
++ 
++		*)        ARG1="$ARG1 $1"
++				  ;;
++		esac
++		shift
++	done
++
++	if [ "$FINAL" = "yes" ]
++	then
++		[ "$VERBOSE" = "y" ] && set -x
++		ARG1="$ARG1 $FINAL_ONLY"
++		NEWLDSCRIPT=`mktemp /tmp/flt-XXXXXX`
++		SEDOP=" -e s/^R_RODAT// -e /^W_RODAT/d"
++		if [ "$MOVDAT" ]
++		then
++			$LINKER -r -d -o "$OFILE.elf2flt" $ARG1  || exit $?
++			if [ "`sparc-linux-objdump -h "$OFILE.elf2flt" | \
++					egrep -A1 '[.]rodata' | grep RELOC`" ]
++			then
++				echo "warning: .rodata section contains relocations"
++			else
++				SEDOP="-e /^R_RODAT/d -e s/^W_RODAT//"
++			fi
++		fi
++		if [ "$SHARED_ID" ]
++		then
++			# Massage the linker script into something useful.  These
++			# regexps are ugly due to some bizzare shell quoting rules.
++			#    SEDOP="$SEDOP -e \"s/ORIGIN = 0x0,/ORIGIN = 0x${SHARED_ID}000000,/\""
++			#    SEDOP="$SEDOP -e \"s/.text 0x0 :/.text 0x${SHARED_ID}000000 :/\""			
++			SEDOP="$SEDOP -e s/\\(ORIGIN.=.0\\)x0,/\\1x${SHARED_ID}000000,/"
++			SEDOP="$SEDOP -e s/\\([.]text.0\\)x0[^0-9]:/\\1x${SHARED_ID}000000:/"
++			
++			if [ "$SHARED_ID" -gt 0 ]
++			then
++				# Non application modules enter via main not _start
++				#    SEDOP="$SEDOP -e 's/ENTRY (_start)/ENTRY (main)/'"
++				SEDOP="$SEDOP -e s/\\(ENTRY.\\)(_start)/\1(lib_main)/"
++			fi
++
++			# Provide the magic parameter that defines the library data segment pointer offset
++			case "sparc" in
++			    h8300) GOT_OFFSET="__current_shared_library_er5_offset_";;
++			    *)     GOT_OFFSET="_current_shared_library_a5_offset_";;
++			esac
++			ARG1="$ARG1 -defsym $GOT_OFFSET=`expr ${SHARED_ID} '*' -4 - 4`"
++		fi
++		
++		# provide a default linker script, we usually need one
++		[ -z "$LDSCRIPT" ] && LDSCRIPT="${LDSCRIPTPATH}/elf2flt.ld"
++
++		# if we can find the linker script we preprocess it,  otherwise
++		# we assume the user knows what they are doing
++		if [ -f "$LDSCRIPT" ]; then
++			sed $SEDOP < "$LDSCRIPT" > "$NEWLDSCRIPT"
++			LDSCRIPT="$NEWLDSCRIPT"
++		elif [ -f "${LDSCRIPTPATH}/$LDSCRIPT" ]; then
++			sed $SEDOP < "${LDSCRIPTPATH}/$LDSCRIPT" > "$NEWLDSCRIPT"
++			LDSCRIPT="$NEWLDSCRIPT"
++		elif [ -f "${LDSCRIPTPATH}/ldscripts/$LDSCRIPT" ]; then
++			sed $SEDOP < "${LDSCRIPTPATH}/ldscripts/$LDSCRIPT" > "$NEWLDSCRIPT"
++			LDSCRIPT="$NEWLDSCRIPT"
++		fi
++
++		if [ "yes" = "no" ]
++		then
++		 $LINKER $EMUL $SDIRS -T $LDSCRIPT -Ur -d -o "$OFILE.elf" $ARG1         ||exit $?
++		 $LINKER $EMUL $SDIRS -T $LDSCRIPT -o "$OFILE.gdb" $ARG1                ||exit $?
++		else
++		 $LINKER $EMUL -r -d -o "$OFILE.elf2flt" $ARG1                          ||exit $?
++		 $LINKER $EMUL $SDIRS -T $LDSCRIPT -Ur -o "$OFILE.elf" "$OFILE.elf2flt" ||exit $?
++		 $LINKER $EMUL $SDIRS -T $LDSCRIPT -o "$OFILE.gdb" "$OFILE.elf2flt"     ||exit $?
++		 rm -f "$OFILE.elf2flt"
++		fi
++		if grep _GLOBAL_OFFSET_TABLE_ "$OFILE.gdb" > /dev/null 
++		then
++			$ELF2FLT $FLTFLAGS -o "$OFILE" -p "$OFILE.gdb" "$OFILE.elf" || exit $?
++		else
++			$ELF2FLT $FLTFLAGS -o "$OFILE" -r "$OFILE.elf" || exit $?
++		fi
++		rm -f "$OFILE.elf"  # not needed for any reason
++		rm -f "$NEWLDSCRIPT"
++		exit 0
++	fi
++
++	exec $LINKER -o "$OFILE" $ARG1
++fi
++
++#
++# otherwise pretend we aren't here
++#
++
++exec $LINKER "$@"
++
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/gcc.pre.sh gcc-4.2.1/gcc/gcc.pre.sh
+--- gcc-4.2.1.ori/gcc/gcc.pre.sh	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/gcc.pre.sh	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,50 @@
++#!/bin/sh
++
++ARG1=
++GCCREAL="$0.real"            # the original renamed-linker
++PISUFFIX=".pinfo"
++PIFILE=""
++PIFILEOPT=""
++PINO=0
++VERBOSE=0
++PILOCK1=0
++PILOCK2=0
++
++while [ $# -ne 0 ]
++do
++    case "$1" in
++        -fno-parse-info) PINO=1;;
++        -fparse-info-file=*) if [ $PILOCK1 == 0 ]; then PIFILE=`expr "$1" : '-fparse-info-file=\(.*\)'`; PILOCK2=1; fi;; 
++        -fparse-info=*) PIFILE=`expr "$1" : '-fparse-info=\(.*\)'`; PILOCK1=1;;
++        -dumpbase) shift; if [ $PILOCK1 == 0 -a $PILOCK2 == 0 ]; then PIFILE="$1$PISUFFIX"; fi;;
++        -verbose) VERBOSE=1;;
++	*)         ARG1="$ARG1 $1";;
++    esac
++    shift
++done
++
++if [ $PINO == 1 ]; then PIFILE=; fi
++if [ "x$PIFILE" != "x" ]; then PIFILEOPT="-fparse-info=$PIFILE"; fi
++$GCCREAL $ARG1 $PIFILEOPT -fparse-id=1
++
++QUITE=
++if [ "x`expr "${M_QUITE}" : '\(y\)'`" == "xy" ]
++then
++QUITE=" --quite"
++fi
++
++if [ "x$PIFILE" != "x" ]
++then
++    if which htmltag.pl &> /dev/null 
++    then
++        if [ "x`expr "${M_QUITE}" : '\(y\)'`" != "xy" ]
++        then
++        #if [ $VERBOSE == 1 ]
++        #then
++            echo htmltag.pl $PIFILE $CONFIG_HTMLTAG_STYLE $QUITE -o $PIFILE.html 
++        #fi
++	fi
++        htmltag.pl $PIFILE $CONFIG_HTMLTAG_STYLE $QUITE -o $PIFILE.html 
++    fi
++fi
++
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/genmodes.c gcc-4.2.1/gcc/genmodes.c
+--- gcc-4.2.1.ori/gcc/genmodes.c	2014-03-13 18:58:53 +0000
++++ gcc-4.2.1/gcc/genmodes.c	2014-03-13 18:59:10 +0000
+@@ -785,10 +785,10 @@
+ 
+ /* Output routines.  */
+ 
++/* Output routines.  */
+ #define tagged_printf(FMT, ARG, TAG) do {		\
+-  int count_;						\
+-  printf ("  " FMT ",%n", ARG, &count_);		\
+-  printf ("%*s/* %s */\n", 27 - count_, "", TAG);	\
++    int count_ = printf (" " FMT ",", ARG); \
++    printf ("\t/* %s [%d], */\n", TAG, count_); \
+ } while (0)
+ 
+ #define print_decl(TYPE, NAME, ASIZE) \
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/gimplify.c gcc-4.2.1/gcc/gimplify.c
+--- gcc-4.2.1.ori/gcc/gimplify.c	2014-03-13 18:58:53 +0000
++++ gcc-4.2.1/gcc/gimplify.c	2014-03-13 18:59:10 +0000
+@@ -48,6 +48,7 @@
+ #include "target.h"
+ #include "optabs.h"
+ #include "pointer-set.h"
++#include "c-tree.h"
+ 
+ 
+ enum gimplify_omp_var_data
+@@ -6360,6 +6361,265 @@
+   input_location = saved_location;
+ }
+ 
++/*static tree gimplify_create_trace_func_reverse (tree argstyp);*/
++static void gimplify_create_trace_func_weak (char *n, char *filen, int func);
++static void gimplify_create_trace_func (tree fndecl, char *n, char *funcname, char *filename, int lineno);
++
++
++char * gen_aux_info_type_str_canonical (tree type);
++
++
++
++
++/*static tree
++gimplify_create_trace_func_reverse (tree argstyp)
++{
++	if (argstyp == NULL_TREE)
++		argstyp = void_list_node;
++	else {
++		tree last = argstyp;
++		argstyp = nreverse (argstyp);
++		TREE_CHAIN (last) = void_list_node;
++	}
++	return argstyp ;
++	}*/
++
++
++static GTY(()) tree laterout = NULL;
++
++static void
++gimplify_create_trace_func_weak (char *n, char *filen, int func)
++{
++	FILE *f;
++	int found = 0;
++	
++	if ((f = fopen(filen,"r"))) {
++		char b[1024+1];
++		char g[1256];
++		sprintf(g,"%s__def:",n);
++
++		while((fgets(b, 1024, f) != 0)) {
++			if (strncmp(b, g, strlen(g)) == 0) {
++				found = 1;
++				break;
++			}
++		}
++		fclose(f);
++		
++	}
++	if (!found) {
++		if ((f = fopen(filen,"a"))) {
++			if (func) {
++				fprintf(f,"\t.globl %s__def\n",n);
++				fprintf(f,"\t.text\n");
++				fprintf(f,"%s__def: ret\n",n);
++			} else {
++				fprintf(f,"\t.globl %s__def\n",n);
++				fprintf(f,"\t.bss\n");
++				fprintf(f,"\t.align 4\n");
++				fprintf(f,"\t.type %s__def, @object\n",n);
++				fprintf(f,"\t.size %s__def, 4\n",n);
++				fprintf(f,"%s__def: \n\t.zero 4\n",n);
++			}
++			fprintf(f,"\t.globl	%s\n",n);
++			fprintf(f,"\t.weak	%s\n",n);
++			fprintf(f,"\t.set	%s,%s__def\n\n",n,n);
++			fclose(f);
++			
++		}
++	}
++}
++
++static void
++gimplify_create_trace_func (tree fndecl, char *n, char *funcname, char *filename, int lineno)
++{
++	int i;
++	/*tree body = NULL;*/
++	tree ir, prev, param, fn, fntyp, argstyp = NULL_TREE, argslist = NULL_TREE ;
++	char argname[1256];
++
++	/* create function type */
++	for (i = 0,param = DECL_ARGUMENTS (fndecl); param ; i++,param = TREE_CHAIN (param)) {
++		argstyp = tree_cons (NULL_TREE, TREE_TYPE(param), argstyp);
++	}
++	
++	if (argstyp == NULL_TREE)
++		argstyp = void_list_node;
++	else {
++		tree last = argstyp;
++		argstyp = nreverse (argstyp);
++		TREE_CHAIN (last) = void_list_node;
++	}
++	fntyp = build_function_type (void_type_node, argstyp);
++
++	/* build function prototype */
++	fn = build_decl (FUNCTION_DECL, get_identifier (n), fntyp);
++
++	/*pushdecl (fn);*/
++
++	prev = current_function_decl;
++	current_function_decl = fn;
++		
++	/*push_scope();
++	  declare_parm_level ();*/
++	
++	/* build function argument list */
++	for (i = 0,param = DECL_ARGUMENTS (fndecl); param ; i++,param = TREE_CHAIN (param)) {
++		tree argdecl;
++		sprintf(argname,"a%d",i);
++		argdecl = build_decl (PARM_DECL, get_identifier (argname), TREE_TYPE(param));
++		DECL_ARG_TYPE(argdecl) = TREE_TYPE(param);
++
++		argslist = chainon (argdecl, argslist);
++		/*pushdecl(argdecl);*/
++		DECL_ARTIFICIAL(argdecl) = 1;
++		TREE_USED(argdecl) = 1;
++		
++
++		/* if (DECL_NAME (argdecl)) { */
++		/* 	bind (DECL_NAME (decl), decl, current_scope, */
++		/* 	      /\*invisible=*\/false, /\*nested=*\/false); */
++		/* } */
++		
++		DECL_CONTEXT (argdecl) = fn;
++	}
++	argslist = nreverse (argslist);
++	DECL_ARGUMENTS (fn) = argslist;
++	
++	ir = build_decl (RESULT_DECL, NULL_TREE, void_type_node);
++	DECL_CONTEXT (ir) = fn;
++	DECL_ARTIFICIAL (ir) = 1;
++	DECL_IGNORED_P (ir) = 1;
++	DECL_RESULT (fn) = ir;
++	TREE_STATIC (fn) = 0;
++	TREE_USED (fn) = 1;
++	DECL_ARTIFICIAL (fn) = 1;
++	DECL_IGNORED_P (fn) = 1;
++	DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fn) = 1;
++	
++	allocate_struct_function (fn);
++	
++	if (tracetype == trace_out_none) {
++		
++		DECL_SAVED_TREE (fn) = build_empty_stmt();
++		
++	} else if (tracetype == trace_out_all ) {
++
++		tree thisp, stmts;
++		
++		stmts = alloc_stmt_list();
++
++		{
++			tree x, str, trace, thisparaml = NULL_TREE, funcnametree, filenametree, tracecnt;
++			funcnametree = build_string_literal (strlen(funcname)+1,funcname);
++			filenametree = build_string_literal (strlen(filename)+1,filename);
++			tracecnt = build_decl (VAR_DECL, NULL_TREE, lang_hooks.types.type_for_size (32, true));
++			DECL_NAME (tracecnt) = get_identifier ("__trace_cnt");
++			TREE_USED (tracecnt) = 1;
++			DECL_EXTERNAL (tracecnt) = 1;
++			
++			
++			trace = build_function_type_list (void_type_node, lang_hooks.types.type_for_size (32, true), char_type_node, char_type_node, lang_hooks.types.type_for_size (32, true), NULL);
++			trace = build_decl (FUNCTION_DECL, get_identifier ("__trace_enter"), trace);
++			TREE_PUBLIC (trace) = 1;
++			DECL_EXTERNAL (trace) = 1;
++			
++			if (flag_gen_trace_funcs && trace_funcs_file_name) {
++				gimplify_create_trace_func_weak ("__trace_enter", (char *)trace_funcs_file_name, 1); 
++				gimplify_create_trace_func_weak ("__trace_exit", (char *)trace_funcs_file_name, 1); 
++			}
++			
++			thisparaml = tree_cons (NULL, build_int_cst (NULL_TREE, lineno), thisparaml);
++			thisparaml = tree_cons (NULL, filenametree, thisparaml);
++			thisparaml = tree_cons (NULL, funcnametree, thisparaml);
++			thisparaml = tree_cons (NULL, tracecnt, thisparaml);
++			
++			x = build_function_call_expr (trace , thisparaml );
++			append_to_statement_list (x, &stmts);
++		}
++		
++		/* output one call for each argument */
++		for (i = 0,thisp = argslist, param = DECL_ARGUMENTS (fndecl); param ; i++,thisp = TREE_CHAIN (thisp), param = TREE_CHAIN (param)) {
++			tree trace, thisparaml = NULL, x;
++			char *name = gen_aux_info_type_str_canonical(TREE_TYPE(param));
++			name = concat("__trace__", name, NULL); 
++			
++			trace = build_function_type_list (void_type_node, TREE_TYPE(thisp), NULL);
++			trace = build_decl (FUNCTION_DECL, get_identifier (name), trace);
++			TREE_PUBLIC (trace) = 1;
++			DECL_EXTERNAL (trace) = 1;
++
++			if (flag_gen_trace_funcs && trace_funcs_file_name) {
++				gimplify_create_trace_func_weak (name, (char *)trace_funcs_file_name, 1); 
++			}
++			
++			thisparaml = tree_cons (NULL, thisp, thisparaml);
++
++			x = build_function_call_expr (trace , thisparaml );
++			append_to_statement_list (x, &stmts);
++		}
++
++		{
++			tree x, traceexit;
++			traceexit = build_function_type_list (void_type_node, NULL);
++			traceexit = build_decl (FUNCTION_DECL, get_identifier ("__trace_exit"), traceexit);
++			TREE_PUBLIC (traceexit) = 1;
++			DECL_EXTERNAL (traceexit) = 1;
++
++			x = build_function_call_expr (traceexit , NULL );
++			append_to_statement_list (x, &stmts);
++		}
++			
++		
++		DECL_SAVED_TREE (fn) = stmts /*body*/;
++
++		
++		
++
++		
++	}
++	
++	TREE_PUBLIC (fn) = 1;
++	DECL_UNINLINABLE (fn) = 1;
++	DECL_INITIAL (fn) = make_node (BLOCK);
++	TREE_USED (DECL_INITIAL (fn)) = 1;
++	
++	BLOCK_SUPERCONTEXT (DECL_INITIAL (fn)) = fn;
++	DECL_CONTEXT (DECL_RESULT (fn)) = fn;
++
++	/* output function */
++	gimplify_function_tree (fn);
++	
++	/*if (cgraph_global_info_ready)
++	  {
++	  tree_lowering_passes (fn);
++	  tree_rest_of_compilation (fn);
++	  }
++	  else*/
++	
++	cgraph_finalize_function (fn, 0);
++	current_function_decl = prev;
++}
++
++int gimplify_finish(void) ;
++
++int gimplify_finish(void) 
++{
++	/* if (laterout) { */
++	/* 	if (cgraph_global_info_ready) */
++	/* 		{ */
++	/* 			tree_lowering_passes (laterout); */
++	/* 			tree_rest_of_compilation (laterout); */
++	/* 		} */
++	/* 	else */
++	/* 		cgraph_finalize_function (laterout, 0); */
++	/* } */
++	return 0;
++	
++}
++
++
++
+ /* Entry point to the gimplification pass.  FNDECL is the FUNCTION_DECL
+    node for the function we want to gimplify.  */
+ 
+@@ -6368,6 +6628,12 @@
+ {
+   tree oldfn, parm, ret;
+ 
++  /*dump_node (DECL_SAVED_TREE (fndecl),
++    0 , stderr);*/
++
++  /*print_c_tree (stderr, DECL_SAVED_TREE (fndecl));*/
++	
++  
+   oldfn = current_function_decl;
+   current_function_decl = fndecl;
+   cfun = DECL_STRUCT_FUNCTION (fndecl);
+@@ -6399,26 +6665,229 @@
+   if (flag_instrument_function_entry_exit
+       && ! DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (fndecl))
+     {
+-      tree tf, x, bind;
++	    tree tf, x, x2, bind,traceon,traceonbool,tracecnt,trace_enter,trace_exit,enter_trace_list = NULL,exit_trace_list = NULL;
++	    tree enter_set_one, enter_set_zero,exit_set_one, exit_set_zero,tracecnt_dec,tracecnt_inc;
++      tree ft_enter, ft_exit, ft_enter_args = NULL, ft_exit_args = NULL;
++      char fn[1256],fn_enter[1256],fn_exit[1256],fn_enter_a[1256],fn_exit_a[1256], fn_enter_c[1256],fn_exit_c[1256], wd_enter_c[1256], wd_exit_c[1256];
++      char fn_enter_def[1256],fn_exit_def[1256];
++      
++      fn[0] = 0;
++      fn_enter[0] = 0;
++      fn_exit[0] = 0;
++      strcat(fn,"__trace__");
++      strcat(fn,DECL_NAME(fndecl) ? IDENTIFIER_POINTER(DECL_NAME(fndecl)) : "<abstrace>");
++      strcat(fn_enter, fn);
++      strcat(fn_exit, fn);
++      strcat(fn_enter,"__enter");
++      strcat(fn_exit,"__exit");
++      sprintf(fn_enter_a,"%s_alias",fn_enter);
++      sprintf(fn_exit_a,"%s_alias",fn_exit);
++      sprintf(fn_enter_c,"%s_call",fn_enter);
++      sprintf(fn_exit_c,"%s_call",fn_exit);
++      sprintf(fn_enter_def,"%s__def",fn_enter);
++      sprintf(fn_exit_def,"%s__def",fn_exit);
++
++      sprintf(wd_enter_c,"\n\t.weak\t%s\n\t.set\t%s,%s\n\t",fn_enter,fn_enter,fn_enter_def);
++      
++      sprintf(wd_exit_c ,"\n%s: ret\n\t.weak\t%s\n\t.set\t%s,%s\n\t",fn_exit_def,fn_exit,fn_exit,fn_exit_def);
++      
++      /* Generate a constructor to run it.  */
++      /*cgraph_build_static_cdtor ('I', body_enter, DEFAULT_INIT_PRIORITY);
++      cgraph_build_static_cdtor ('I', body_exit, DEFAULT_INIT_PRIORITY);
++      */
++      
++      /* Build a decl for enter and exit.  */
++      ft_enter = build_pointer_type (TREE_TYPE (fndecl));
++      ft_enter = build_function_type_list (void_type_node, ft_enter, NULL);
++      ft_enter = build_decl (FUNCTION_DECL, get_identifier (fn_enter), ft_enter);
++      TREE_PUBLIC (ft_enter) = 1;
++      DECL_EXTERNAL (ft_enter) = 1;
++
++      ft_exit = build_pointer_type (TREE_TYPE (fndecl));
++      ft_exit = build_function_type_list (void_type_node, ft_exit, NULL);
++      ft_exit = build_decl (FUNCTION_DECL, get_identifier (fn_exit), ft_exit);
++      TREE_PUBLIC (ft_exit) = 1;
++      DECL_EXTERNAL (ft_exit) = 1;
++
++      for (parm = DECL_ARGUMENTS (fndecl); parm ; parm = TREE_CHAIN (parm)) {
++	      ft_enter_args = tree_cons (NULL, parm, ft_enter_args);
++	      ft_exit_args = tree_cons (NULL, parm, ft_exit_args);
++      }
++
++      traceon = build_decl (VAR_DECL, NULL_TREE, lang_hooks.types.type_for_size (32, true));
++      DECL_NAME (traceon) = get_identifier ("__trace_on");
++      TREE_USED (traceon) = 1;
++      DECL_EXTERNAL (traceon) = 1;
++      tracecnt = build_decl (VAR_DECL, NULL_TREE, lang_hooks.types.type_for_size (32, true));
++      DECL_NAME (tracecnt) = get_identifier ("__trace_cnt");
++      TREE_USED (tracecnt) = 1;
++      DECL_EXTERNAL (tracecnt) = 1;
++
++      if (flag_gen_trace_funcs && trace_funcs_file_name) {
++	      gimplify_create_trace_func_weak ((char *)"__trace_on", (char *)trace_funcs_file_name, 0); 
++	      gimplify_create_trace_func_weak ((char *)"__trace_cnt", (char *)trace_funcs_file_name, 0); 
++      }
++      
++      /*tracecnt_inc = build_unary_op (PREINCREMENT_EXPR, traceon, 0);*/
++      /*tracecnt_dec = build_unary_op (PREDECREMENT_EXPR, traceon, 0);*/
++      
++      STRIP_TYPE_NOPS (tracecnt);
++      tracecnt_inc = build_unary_op(PREINCREMENT_EXPR, tracecnt, 0);      
++      tracecnt_dec = build_unary_op(POSTDECREMENT_EXPR, tracecnt, 0);      
++      
++      STRIP_TYPE_NOPS (tracecnt_inc);
++      STRIP_TYPE_NOPS (tracecnt_dec);
++      TREE_SIDE_EFFECTS(tracecnt_inc) = 1;
++      TREE_SIDE_EFFECTS(tracecnt_dec) = 1;
++      
++      /*fprintf(stderr,"%d,%d\n",TREE_CODE (traceon),MODIFY_EXPR);*/
++      traceonbool = c_common_truthvalue_conversion(traceon);
++      
++      enter_set_zero = build_modify_expr (traceon, NOP_EXPR,  integer_zero_node);
++      enter_set_one = build_modify_expr (traceon, NOP_EXPR,  integer_one_node);
++      exit_set_zero = build_modify_expr (traceon, NOP_EXPR,  integer_zero_node);
++      exit_set_one = build_modify_expr (traceon, NOP_EXPR,  integer_one_node);
+ 
+       tf = build2 (TRY_FINALLY_EXPR, void_type_node, NULL, NULL);
+       TREE_SIDE_EFFECTS (tf) = 1;
+       x = DECL_SAVED_TREE (fndecl);
+       append_to_statement_list (x, &TREE_OPERAND (tf, 0));
+       x = implicit_built_in_decls[BUILT_IN_PROFILE_FUNC_EXIT];
+-      x = build_function_call_expr (x, NULL);
+-      append_to_statement_list (x, &TREE_OPERAND (tf, 1));
++      x2 = build_function_call_expr (x, NULL);
++      x = build_function_call_expr (ft_exit /*x*/, ft_exit_args ? nreverse(ft_exit_args) : ft_exit_args /*NULL */);
++
++      
++      exit_trace_list = alloc_stmt_list();
++      append_to_statement_list(exit_set_zero,&exit_trace_list);
++      append_to_statement_list(x,&exit_trace_list);
++      append_to_statement_list(exit_set_one,&exit_trace_list);
++      append_to_statement_list(tracecnt_dec,&exit_trace_list);
++      
++      trace_exit = build3 (COND_EXPR, void_type_node, traceonbool, exit_trace_list, build_empty_stmt() );
++
++      append_to_statement_list (trace_exit, &TREE_OPERAND (tf, 1));
+ 
+       bind = build3 (BIND_EXPR, void_type_node, NULL, NULL, NULL);
+       TREE_SIDE_EFFECTS (bind) = 1;
+       x = implicit_built_in_decls[BUILT_IN_PROFILE_FUNC_ENTER];
+-      x = build_function_call_expr (x, NULL);
+-      append_to_statement_list (x, &BIND_EXPR_BODY (bind));
++      x2 = build_function_call_expr (x, NULL);
++      x = build_function_call_expr (ft_enter /*x*/, ft_enter_args ? nreverse(ft_enter_args) : ft_enter_args /*NULL*/);
++      /*append_to_statement_list (wd_enter, &BIND_EXPR_BODY (bind));
++	append_to_statement_list (wd_exit, &BIND_EXPR_BODY (bind));*/
++      
++
++      enter_trace_list = alloc_stmt_list();
++      append_to_statement_list(tracecnt_inc,&enter_trace_list);
++      append_to_statement_list(enter_set_zero,&enter_trace_list);
++      append_to_statement_list(x,&enter_trace_list);
++      append_to_statement_list(enter_set_one,&enter_trace_list);
++      
++      
++      /*      trace_list = tree_cons (NULL, enter_set_one, trace_list);
++      trace_list = tree_cons (NULL, x, trace_list);
++      trace_list = tree_cons (NULL, enter_set_zero, trace_list);
++      */
++      
++      trace_enter = build3 (COND_EXPR, void_type_node, traceonbool, enter_trace_list, build_empty_stmt() );
++
++      
++      append_to_statement_list (trace_enter, &BIND_EXPR_BODY (bind));
++
++      
+       append_to_statement_list (tf, &BIND_EXPR_BODY (bind));
+ 
++
++      {
++	      tree /*ia,*/i,id,id2,ic,ir, prev, p0;
++	      tree parm_decl, pl = NULL;
++	      tree parm_list = NULL_TREE;
++	      /* Build a decl for __gcov_init.  */
++	      if (0) {
++			      
++	      p0 = DECL_ARGUMENTS (fndecl);
++	      
++	      i = build_function_type_list (void_type_node, TREE_TYPE(p0), NULL);
++	      id = build_decl (FUNCTION_DECL, get_identifier ("__trace_int"), i);
++
++	      id2 = build_decl (FUNCTION_DECL, get_identifier ("__trace_int_2"), build_function_type_list (void_type_node, TREE_TYPE(p0), NULL));
++	      
++	      TREE_PUBLIC (id2) = 1;
++	      DECL_EXTERNAL (id2) = 1;
++	      
++	      parm_decl = build_decl (PARM_DECL, get_identifier ("a"),
++					   TREE_TYPE(p0));
++
++
++	      DECL_CONTEXT (parm_decl) = id;
++	      
++	      parm_list = chainon (parm_decl, parm_list);
++	      
++	      parm_list = nreverse (parm_list);
++	      DECL_ARGUMENTS (id) = parm_list;
++		
++
++	      pl = tree_cons (NULL, parm_decl, pl);
++	      
++	      
++	      ic = build_function_call_expr (id2, pl);
++	      
++	      
++	      prev = current_function_decl;
++	      current_function_decl = id;
++	      
++	      
++	      ir = build_decl (RESULT_DECL, NULL_TREE, void_type_node);
++	      DECL_ARTIFICIAL (ir) = 1;
++	      DECL_IGNORED_P (ir) = 1;
++	      DECL_RESULT (id) = ir;
++
++	      allocate_struct_function (id);
++
++	      TREE_STATIC (id) = 1;
++	      TREE_USED (id) = 1;
++	      DECL_ARTIFICIAL (id) = 1;
++	      DECL_IGNORED_P (id) = 1;
++	      DECL_NO_INSTRUMENT_FUNCTION_ENTRY_EXIT (id) = 1;
++	      DECL_SAVED_TREE (id) = ic /*body*/;
++	      TREE_PUBLIC (id) = 1; /*! targetm.have_ctors_dtors;*/
++	      DECL_UNINLINABLE (id) = 1;
++	      
++	      DECL_INITIAL (id) = make_node (BLOCK);
++	      TREE_USED (DECL_INITIAL (id)) = 1;
++	      
++	      gimplify_function_tree (id);
++
++	      p0 = DECL_ARGUMENTS (id);
++
++	      for (p0 = DECL_ARGUMENTS (id); p0 ; p0 = TREE_CHAIN (p0)) {
++		      fprintf(stderr, "0x%x\n", (unsigned int)p0);
++	      }
++
++	      
++	      cgraph_finalize_function (id, 0);
++	      
++	      current_function_decl = prev;
++
++	      }
++
++	      {
++		      location_t  loc = DECL_SOURCE_LOCATION(fndecl);
++		      gimplify_create_trace_func (fndecl, fn_enter_def, DECL_NAME(fndecl) ? IDENTIFIER_POINTER(DECL_NAME(fndecl)) : "<abstrace>", LOCATION_FILE(loc), LOCATION_LINE(loc));
++		      
++	      }
++	      /*append_to_statement_list (ic, &BIND_EXPR_BODY (bind));
++	       */
++      }
++      
+       DECL_SAVED_TREE (fndecl) = bind;
++      gimplify_body (&DECL_SAVED_TREE (fndecl), fndecl, false);
++
++      cgraph_add_asm_node (build_string(strlen(wd_enter_c),(char*)wd_enter_c));
++      cgraph_add_asm_node (build_string(strlen(wd_exit_c),(char*)wd_exit_c));
++      
+     }
+ 
++
+   current_function_decl = oldfn;
+   cfun = oldfn ? DECL_STRUCT_FUNCTION (oldfn) : NULL;
+ }
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/base.gif gcc-4.2.1/gcc/img/base.gif
+--- gcc-4.2.1.ori/gcc/img/base.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/base.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  ˜  ˚˙¸˘¯˙iÕˇåﬂˇæ∏«kŒˇÔÛÅŸˇòÂˇFFôÙÛˆÚÚÚQ¡ˇÏÎÔKæˇ¥¥‹ÉÉµﬁ›Èœœ“wjäØˇÉ€ˇîä£ÛÚıÛÚˆ‘‘◊mdçﬂﬂ‡ÃÃ”≠≠«ü≥ÀöŒÎ±∞ƒ–Ã◊á|òúÁˇ∂∞¬ºª◊|◊ˇ÷÷€ªª÷QQônn°üü∆3≤ˇ9µˇ—–⁄ç‡ˇl_Åóå¶VØÓ…˝ˇ††ø~◊ˇ†Èˇx‘ˇkâÿŒ…‘ê∫ﬁ˘˘˙˝¸˝ﬁﬁﬂ√√—ûËˇ“—‡¥¥’√√Ãˆı¯‹€‰ÇvîpÑøñ‰ˇù¬‹ …›~z∑ÈÈÈÅ{£rlù‘‘Âk`áëá†¶û≤‚‚‚jŒˇ_Qvy’ˇÖÅ®^Puc ˇèèΩnnªèè∫··‚ÆˇﬁﬁÎ¿Ωœ≠ˇ”””ÏÏÏ[[ôeWz¥¥…™¢∂õí©ee•¬˙ˇ»√–¬ˆeZé•Æﬁqp•äá¥WƒˇçÉù••—¥Ûˇìè∑ÓÓÓ⁄⁄Âèòœ‰‰ÁßÃËg§Êëπ–±©º··Ôb…ˇ’‘ÊV√ˇ°ß¿znçÓÚliû‹€„ööø≥«„_ßËóó…FF¢úò±gÜ»;∂ˇ¢–„äﬁˇ\ï„T√ˇ¬¬◊8±˛ƒøÕ‘‘·è†±ﬂ‹‰æÛ˘ÆÆÃO∑˘qºÙææ”ŒŒ÷ƒ√‹≠≠¬ÅÅµe[Çâ®‡ˇˇˇ                                                                                                                                                                                                                                                                                    !˘  £ ,       Ì G	∏O!;IP¨ `†√Qa2ÒÒ)ê$:òÑh¯pîK{aöëÃë&t≈·√£]ÊP∞1¿ü!+]‰11 ¡/jâ¢`%ëCSn®p†JF¨ê	ê`ÅIƒ†ï£J»p¿ öpLh ÷"-m•ÑM∂+ˇËô¥¶çE°†®·ÿ—…ùr%H@àD—ï^ÍÙY¿%ö†Ë\[i…1=$m·ç+#tí≤·'*≤h8#µ#è/ã@îÈ`» A)¡»ï+d‚P∫ ∂πÛÁ ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/cd.gif gcc-4.2.1/gcc/img/cd.gif
+--- gcc-4.2.1.ori/gcc/img/cd.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/cd.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,2 @@
++GIF89a  ≥ ``a≤≤≈¯ˆ˚€Ÿˇûù§ÅÅÜ…… Â‰˛ŒŒ˚˘◊ˇıÍˇÊÊËææËôôÃˇˇˇˇˇˇ!˘   ,       ú…g)÷à…Â"Ü#(«À÷	Ö í«0 Ö÷Æ„îÚÃ‘éâ!†”ëdà‰i1!4QbzH  Åf ¿@( \ÔP(L
++åÆ∑  (i–‰ÛÄ"–Ë≥ÎHS	.m[H2E`f,IV9,Xó%.s(ëòwûmD+≠sm5*+'m )æøæ ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/empty.gif gcc-4.2.1/gcc/img/empty.gif
+--- gcc-4.2.1.ori/gcc/img/empty.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/empty.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  ë     ˇˇˇÄÄÄˇˇˇ!˘   ,       úè©ÀÌ£ú¥⁄ã≥ﬁú ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/folder.gif gcc-4.2.1/gcc/img/folder.gif
+--- gcc-4.2.1.ori/gcc/img/folder.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/folder.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,2 @@
++GIF89a  ’  ˚˚˚ÔÔÔ€∑RÃô4‰‰‰¡¡¡£q¬è*∑∑∑ûl∫á"új…ñ1Ωä%≥Åôg€∑qµÇ†nÀò3ˇˇ∫∞~≈í-ßu«î/¶¶¶•s∑Ñ´y»ï0¿ç(∆∆∆Æ|öh®v¨zˇ‘oˇ¯ìÎÎÎˇˇúˇ€uˇ‰ˇÔâ∂∂∂ˇˇˇˇˇô                                                      !˘  . ,       ë@ópH,è»§“5Lù @9`Y)îaz@`0§°ÿDï¿pbmª€£œê—:ŸÔ¯÷1ƒ¥˛ÄÅ+C-%âäã-ÖB-*ìîï-	è.-)ùûü-ô-(¶ß®-!ô
++-$Ø∞±-|Bg "	C +… ÀD &“”‘RKJA ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/folderopen.gif gcc-4.2.1/gcc/img/folderopen.gif
+--- gcc-4.2.1.ori/gcc/img/folderopen.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/folderopen.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,4 @@
++GIF89a  ’  ÔÔÔ•s˚˚˚Ãô4¡¡¡‰‰‰öh†nÀò3…ñ1ûlúj˙˚¸∑∑∑ˇˇ•∆ö‰zΩä%œ¢&ßu∞~‚≥C¬è*¢p
++≥ÅµÇ∑Ñ◊∏@⁄ølˇÎÑôg˜â¶¶¶‚¡P…†!˝’p§rˇ◊Ñ∫á"£q»ï0∆∆∆¨zˇ‰ˇ€uˇÔâÎÎÎ∂∂∂ˇ¯ì∆öˇˇúˇˇôˇˇˇ                                 !˘  5 ,       ï¿öpH,è»§R8 (Ä@9†YKaz¨ æ_Zƒ§…`(Ä!Çn[≠™‘0AÉŸÔxŸ§!å˘ˇÄ~!'/}3mm31%Ü51àxw21#
++ê í-ûüû"êí2+™´+ê5ú3,∂∑∂|Bß¿¿$
++ D/Œœ–E .÷◊ÿRKIA ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/globe.gif gcc-4.2.1/gcc/img/globe.gif
+--- gcc-4.2.1.ori/gcc/img/globe.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/globe.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,2 @@
++GIF89a  ˜  ˙˚¸rBßÉÍ<∑ˇ=¢~Õ–>§c»¬»–6õ}„èıiŒ7úÑí¢ï†Æbl}3K~G®n)Mâ:x∞π∆œõˇLXoÛÙˆdrÄitÖg2uŸ]èØß∏ƒ_iy-Ç E§R~|·â¢±”⁄ﬂHcøü°XæU£‡uàñEõÊ	9üˆ¯˙>íL±≈€Î)fâ‡„Ê;∂ß)S≤xÑñ
++ù˛ÔÒÛñ¸ÓÔÒ%L±Jæ%$â]b¡˚˛¸jºg∂ÜŸx¶‹ˇ€Ì¯òôm´º™ÓÕèímœ>∏Ê≈HíZ≈-V√·åa•‰†É√◊r¬˙q∞‰Ö@q∫Ívxâ∆G≠ˆ¬ﬂÛÅ»˚{k]nú–$~’lá…Ô*®PÜ«„[ev~+5Sé}–~+YÅ2Yë†—ÚÉ±wñ¨O≥¢7ú'äÕm'Kdû7gmÅËB`≈j¬…—`øˇ"¶ˇ>£ª»–hÃC≥ˇè‡ˇÇì£&ó„Ùˆê©∏—’€Å¿Í;†uäúERoî»È\√N≥ÈØP∂ŒﬁËS]p=£$ùıc<gcoÄåù¨_∫¡“Ëˆ˛ˇˇbæ∑ít9ä…‡˘ÎÇ»zµŸY≈˘ï◊∞]N6V∂°¢é‡∂)Cîp’óº_≥Íü—ÚJôÃt:>cå[â™hD`∆‹Îıâú¨í¨∫e W¡ÉFÜ2HxY≈∫¢ˇÊËÎò©∑¡Á˘HUré¡Â&h¿Å*Üô®ÜQ¡S|BÆÿÛ_j{Äƒ°\ò¬π€ÒçÙ`≤ÈS∏p}éò˛Q∂‰Óıì°Ø^tã[¡1b¿[¨‚fbﬂÚ˙EôﬂõÃÓüqÃ¯›|øÍm¡π-Fâãﬁ®4_¬v‘Wä›ªˇˇˇ                                                                                                !˘  ﬂ ,       ˇ ø	H∞U5l•™¸!8∞àòl√&Åâ≤IRØSØ~KcÄV(oK:ërÑÈõ.@É≈™±ÌêDM∫»πrDÜlz(Å2-N†Ú±ÊAS¬ò¡5§:û £0#¡)£åAÙÀ	∆®†¢#çAjz¥X≤ñÉ2öΩÒƒe¡-§xPì‰“ÄV¨Í@"¡Cvº¿j∞≈ô ê=äSA¡cX,{ˆ#¿1úÅ3+Ÿ@J{Dhs`$&∏¯$äÑÅYÓ8¢hYÒò3¬ã’ät¬¬.n(XA≥°-CÑ92Û„FP4b©–î$ëêkÃç@; |±H’Ö\›ÍÛ†Y[ T“»øøˇˇﬂ ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/imgfolder.gif gcc-4.2.1/gcc/img/imgfolder.gif
+--- gcc-4.2.1.ori/gcc/img/imgfolder.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/imgfolder.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,4 @@
++GIF89a  Ê  ÔÔÔ•sûˇˇÜj¡¡¡∑∑∑˚˚˚ˇ√≥íÍ•§¢öhÆØØ°ã†üú‰‰‰©©©•ˇ∆∆∆≤≥µµ∑∫ˇˇ•†nÅ{nújûlÉ~r‚≥C˜â⁄ølòïèäÖ}èãÇˇ◊Ñ§r≥Åœ¢&ˇÎÑôgÂﬂÑ‚¡PÀò3…†!£uìêâÃô4¢p
++…ñ1∞~úöñ∏∫æ¯lB¨zÂÂÂ◊∏@∆öÜÅw˝’pßu£q‰z¶¶¶ˇ¯ìˇ‰ˇ€uˇÔâÎÎÎfä¶ˇˇú∂∂∂˚˙¸∆öˇˇˇˇˇô                                                                                                                                                                     !˘  I ,       ÀÄIÇÉÑÖÖ1	0+ ÜIEñóñìEüEìEB´BE7DÜ,EBGBE*"/íÇ(	µGGª4G3õÇ.µ2 &C9¶IFﬁﬂ‡ﬁ'$:±›HCÈÍÈHF ÊFË=ıˆ=CF8Ê Û@
++H!ÖÜÊÃ‚£°CjåP`.…?$?2jÃ∏√F	nI92Dã
++.(‡AÄêDb úI¿A! ArÍ‹	¿¿§üÖ ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/join.gif gcc-4.2.1/gcc/img/join.gif
+--- gcc-4.2.1.ori/gcc/img/join.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/join.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  Ä ÄÄÄˇˇˇ!˘   ,       åÄÀÌ´ûú(“Î,ﬁG˘j4ñbIù®§ÆA ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/joinbottom.gif gcc-4.2.1/gcc/img/joinbottom.gif
+--- gcc-4.2.1.ori/gcc/img/joinbottom.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/joinbottom.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  Ä ÄÄÄˇˇˇ!˘   ,       åÄÀÌ´ûú(“Î,ﬁG˘j‹HñÊâ¶F ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/line.gif gcc-4.2.1/gcc/img/line.gif
+--- gcc-4.2.1.ori/gcc/img/line.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/line.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  Ä ÄÄÄˇˇˇ!˘   ,       åÄÀÌ´ûú(“Î,ﬁGÛÌ}W(Nd˘úh ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/minus.gif gcc-4.2.1/gcc/img/minus.gif
+--- gcc-4.2.1.ori/gcc/img/minus.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/minus.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  ë ÇÇÇÄÄÄ   ˇˇˇ!˘   ,       'ú?ÅÀÌ´ûú°Z˚"ÃM3Äà"îeÇ*öà:,kºŸuM∂‹∫ªﬂ ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/minusbottom.gif gcc-4.2.1/gcc/img/minusbottom.gif
+--- gcc-4.2.1.ori/gcc/img/minusbottom.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/minusbottom.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  ë ÄÄÄ   ˇˇˇ   !˘   ,       &î/ÄÀÌ´ûú†Z˚"ÃM3ÄàîeÇ*öà:,kºŸuMˆçÁz^  ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/musicfolder.gif gcc-4.2.1/gcc/img/musicfolder.gif
+--- gcc-4.2.1.ori/gcc/img/musicfolder.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/musicfolder.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,6 @@
++GIF89a  ÊI ˇ¯ìÔºWúô¨ÔÔÔ_`´•sˇ‡{˚˚˚Ãô4›ﬂˆ44g‰‰‰¡¡¡ˇÙé~|⁄NNö…ñ1dd≈˙˚¸˘˘˘∑∑∑öhújˇ‘oûlÀò3†nˇÎÖönﬂﬂﬂ¬è*êçœ◊∏@£qﬁﬁﬁ⁄ølôg§r∆öcccˇÎÑªΩˇâââ˜âµÇ∑ÑÓÓÓ∆∆∆øøø¶¶¶ßuƒƒƒûqË€⁄…†!Ωä%‰z»ï0‚¡P¢p
++óokˇÔâ˛˛˛uml00d≈¡Ìˇ€uÎÎÎˇˇú∆ö∂∂∂ˇˇˇˇˇô                                                                                                                                                                     !˘  I ,       ÷ÄIÇÉÑ@5>ÑãÑ@"åìé@0.å9@?ãG®*<@3ÑßDHHDDG7-,4ÉGD∆∏D@®'/ÉG “
++
++
++“D2ÇEﬁﬁA)A		AE:(!F›∑D„A#EHÎIˆD ÔÂAÚVÿ√êoÄΩ|p‡@@Ä6êX»w`ü2∏IÖ|I"B≤$I&HpT±ÄKó%vh¿`°BÑ00¬≥ßOB¥®—Oìí.
++ ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/nolines_minus.gif gcc-4.2.1/gcc/img/nolines_minus.gif
+--- gcc-4.2.1.ori/gcc/img/nolines_minus.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/nolines_minus.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  ˜ ÇÇÇÄÄÄ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          !˘   ,       : H∞†¡É*\ò0Ä√á — EÑf¥8‡üGè6júXq$Fí!Bd»≤•Àó0 ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/nolines_plus.gif gcc-4.2.1/gcc/img/nolines_plus.gif
+--- gcc-4.2.1.ori/gcc/img/nolines_plus.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/nolines_plus.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  ˜ ÇÇÇÄÄÄ                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          !˘   ,       C H∞†¡É*\ò0Ä√á Q‡øÅfpQ‡FÉˇâ9‡c¡çKV‰àq%Aì/!BdH≥¶Õõ8 ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/page.gif gcc-4.2.1/gcc/img/page.gif
+--- gcc-4.2.1.ori/gcc/img/page.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/page.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,2 @@
++GIF89a  Ê  ˚˚˚ÔÔÔ¯˚ˇÌˆˇ¡¡¡‰‰‰˝˝˝ÿÎˇ¿ﬂˇ˛ˇˇÛ˘ˇ√·ˇÙÙı˘˘˘Åï√kt•ŒÁˇ^aêUßÌì™“zÉ∞¿¿ˇŸ·ÌÑõ ä®Ÿ‰Òˇë∏ÍíºÔs~∞ı˙ˇ˜˜˜ê£ÀÕÊˇ∫›ˇÿÂˆmw®ejöá°“éºè≥ÂåÆﬂŒ”ˇˆ˙ˇgmû¸˝ˇ}â∂îøÚ∆∆∆˛˛˛€Á˜ip¢oz¨r|ÆtÄ≤á©‹—Èˇ…‰ˇ∑∑∑ÎÎÎ∂∂∂Èıˇux£·ˇ€Ìˇˇˇˇ                                                                                                                                                                                             !˘  A ,       £ÄAÇÉÑÖÜáà.6ãå65 á@ 5êÜ0@°	15Ü'¢"5±/Ü(°<<)9Ü,∏π<??4øÖ%*
++π>>«73 ÑŒ<–∆7 #’É∫⁄?788ﬂÇ&Ÿ—‰Ê2ÈA-Ì7Â+ÚˆÊBêê◊£†¡É*@`á√á	0 Äéã/vBƒ—P  ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/plus.gif gcc-4.2.1/gcc/img/plus.gif
+--- gcc-4.2.1.ori/gcc/img/plus.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/plus.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  ë ÄÄÄ   ˇˇˇ   !˘   ,       *î/ÄÀÌ´ûú†Z˚"Ã'Õhûn¡y&™¢âgå™SíŸuM:Ω˜ºØ+  ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/plusbottom.gif gcc-4.2.1/gcc/img/plusbottom.gif
+--- gcc-4.2.1.ori/gcc/img/plusbottom.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/plusbottom.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1 @@
++GIF89a  ë ÄÄÄ   ˇˇˇ   !˘   ,       )î/ÄÀÌ´ûú†Z˚"Ã'Õhûn¡y&™¢âgå™SíŸuM˙Œ˜~_  ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/question.gif gcc-4.2.1/gcc/img/question.gif
+--- gcc-4.2.1.ori/gcc/img/question.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/question.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,2 @@
++GIF89a  ˜• „Ùˇ˛ˇˇ÷Ïˇ˘ˇˇ¯ˇˇ“Ïˇ√Áˇ˙ˇˇ™¡÷›ﬂÂ Œÿﬁ‡ÊMeäÙ¯˚≥÷ı’ÌˇÎ¯ˇÂÂ‰±÷ÙÎ˙ˇËıˇ†≤∆∑¬œ⁄›‰‹„ÍÈı˝û®ª/è¡¡ÃÓ˛ˇÌˇˇ‚ÁÏ.\—Ôˇ¢∏ÀÔ˝ˇfıÙÚ…Áˇ_jÜÁÏÒÛ˚ˇŒÁˇÔÌÌÃÎˇöµ Ny´ﬁÔˇpüŒŸÓˇ¸ˇˇÂ˙ˇ*Ht¡ÿÓ≥‹ˇ∑◊ı∆Âˇﬂ·ÁeáØlä≠ﬂÙˇ◊ˇÇì≥⁄ÊÔîØÕΩæ…ÆΩ“õΩ⁄eâ≠ƒ˜ˇÒˇˇ‡Ô˝|¶ﬂî∂◊£Æ¬ÀÌˇsò…ŸÊp…Íˇ^œËˇz‹ˇ7X•7Y¶Àœÿ)Fö]ç›Ω«–‹Óˇfvî]kâ Âˇ›ˇﬁ·Ëö•∫KhåœÓˇÔÛˆ)U˜¯˘ÊÓˆØµ≈Æøœ7EhàóØï≤œLlñ¥ ‚‚ˇˇkàß]ká≈„¸’Á¯Ïˆˇ÷ﬂÈ±∂ƒxÛˇˇ\pêØ ‰÷Îˇ«ÈˇcÅ¥nwë®∑ EBcuÔ˙ˇ≥∏≈¶»˘ˇˇÊÚˇ>å8Y§œÍˇ® Á…Œ◊ŸÚˇ∏’Ìì∏ÿ—Îˇ—¯ˇfpädïÈPq¿¿◊Ï€ﬂÊ0_ô∂“«€Ëá™ OXéø‰˝√Ãÿ–ÈˇÔÙ˜ƒÂ˜$=å∑÷¯…ﬁÚ»‘ﬂBdîˇˇˇ                                                                                                                                                                                                                                                                                 !˘  • ,       Ò K	H∞†¡2∆êZÿ`”ÉQîX®ËœôÖË¸∞b!©LPÆx$%Ñ†ô§§H9®)
++Å™(™”Ä9ö¯ £Ñ  -d¥Q 0KÖF¸0D‚S /zbÃ≈D†Ö# ^L!Ö¿N8X4	é@4rxp *F¢tA‰(Å.ı(†¬√'áô¿Ò$Œé>)â®Bå>R6xZb‡∆V˙i¡à(Ië∞ 1 !	H5º±îH”ûG©tbé-¬`≤°ÉLö:	r`SdTê‡¡pë π¡x.8üN0  ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/img/trash.gif gcc-4.2.1/gcc/img/trash.gif
+--- gcc-4.2.1.ori/gcc/img/trash.gif	1970-01-01 00:00:00 +0000
++++ gcc-4.2.1/gcc/img/trash.gif	2014-03-13 18:59:10 +0000
+@@ -0,0 +1,3 @@
++GIF89a  ˜î ô…Ôˇ¢”ˇì…˝≥ﬂˇÕÚˇ!¶!˝˝˝ÍÍÍ≠Ÿˇ¢¢¢···”””ú≠≠‚ıˇuuu˘˘˘˚˚˚QπQÇø˜ÈÈÈz∫Û≠≠≠ÑøÙëëëkmm÷Ûˇggg€˝ˇΩÊˇØØØ∞∞∞Æ≈≈ÙÙÙ———–““°°°ˆˆˆœœœ£‘ˇu}}—ÔﬁïïïÀÚ˝µÊøº⁄Ú‡¯˛≈È˝¬⁄∞›ˇÿÿÿÏºÂˇŒÙˇ∞ﬁ˛áù™ï ˛~ºıå“èê»˘Ñèèï»˘Ñ¡¯q∆qÄÄÄì¨º¥¥¥—Í˝ÒÒÒ¿€€‰ˇˇ€˘˙Ÿ˚ˇôœ˘ÃÁˇ≥„˘{{{‡‡‡¬ÏœËËË≠»“√ÎˇΩΩΩ”˜ˇ~ÃÅªªª„„„â√˘¡Ê¸‹ÈÌºÁ¸è∆˚⁄˘Ôß—ÙÅÃÅ“““√Ì¸ÚÚÚøÈ˝s∂Ïs∂ÛÛÛäôô≥‚˘äääûûû¬Íˇ˜˚˛˜˜˜å√ı√ÏœoµÔô≈Ë•–Ì}ÀÅwÑé∆Áˇ„˚sss   Ω‰ˇÔÔÔ•••Í¸ˇ∏‹˛ª„ﬂ€Ê°±±†÷Œ⁄¸ˇÿ˙ˇ®◊ˇààƒÍﬂ∂‰˙qqq‰‰‰ﬂˇˇØΩΩﬁﬁﬁ•Œ¯Ë˘Ô¥‡ˇ≤◊¯pppA≥Aﬁˇˇ                                                                                                                                                                                                                                                                                                                                    !˘  î ,       ¯ )	H∞†¡Çl ı¿—hAõÉÌxπ‡jí†£2p T»±cÃ§òƒrí0h≠Pƒëï-[vaÒFíë"(f	@î®!  H“àåÅ-H%êGBï/JÎI√h `(ô„‚á$I~n®∏2œÄ∑˙ú5êBG :
++·fBí-5$ê‡H“ãB†<g	ïG'0‡d“Ü)%jD#!I·pÜ	òg) •√öÉ@†àdA/A#j–ÄGÜ;¨$ä`êà	
++HÏÇßâ‘!Ë°Å‚≥C ;
+\ No newline at end of file
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/input.h gcc-4.2.1/gcc/input.h
+--- gcc-4.2.1.ori/gcc/input.h	2014-03-13 18:58:53 +0000
++++ gcc-4.2.1/gcc/input.h	2014-03-13 18:59:10 +0000
+@@ -78,6 +78,8 @@
+ extern const char *main_input_filename;
+ 
+ extern location_t input_location;
++extern source_location input_source_location;
++
+ #ifdef USE_MAPPED_LOCATION
+ extern void push_srcloc (location_t);
+ #else /* ! USE_MAPPED_LOCATION */
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/opts.c gcc-4.2.1/gcc/opts.c
+--- gcc-4.2.1.ori/gcc/opts.c	2014-03-13 18:58:53 +0000
++++ gcc-4.2.1/gcc/opts.c	2014-03-13 18:59:10 +0000
+@@ -739,12 +739,48 @@
+       set_Wunused (value);
+       break;
+ 
++    case OPT_fhtmltag_fid_:
++    case OPT_fhtmltag_linkid_:
++     break;
++      
+     case OPT_aux_info:
+     case OPT_aux_info_:
+       aux_info_file_name = arg;
+       flag_gen_aux_info = 1;
+       break;
+ 
++    case OPT_ftrace_funcs:
++    case OPT_ftrace_funcs_:
++      trace_funcs_file_name = arg;
++      flag_gen_trace_funcs = 1;
++      break;
++
++    case OPT_ftrace_type:
++    case OPT_ftrace_type_:
++	    if (strncmp(arg,"trace_out_none",strlen("trace_out_none")) == 0)
++		    tracetype = trace_out_none;
++	    else if (strncmp(arg,"trace_out_all",strlen("trace_out_all")) == 0)
++		    tracetype = trace_out_all;
++	    else
++		    printf(stderr,"Unknown trace type %s\n",arg);
++      break;
++      
++    case OPT_fparse_info:
++    case OPT_fparse_info_:
++      aux_info_file_name = arg;
++      flag_gen_parse_info = 1;
++      break;
++
++    case OPT_fparse_info_file:
++    case OPT_fparse_info_file_:
++      parse_info_file_name = arg;
++      break;
++      
++    case OPT_fparse_id_:
++      flag_gen_parse_id = value;
++      break;
++
++
+     case OPT_auxbase:
+       aux_base_name = arg;
+       break;
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/toplev.c gcc-4.2.1/gcc/toplev.c
+--- gcc-4.2.1.ori/gcc/toplev.c	2014-03-13 18:58:54 +0000
++++ gcc-4.2.1/gcc/toplev.c	2014-03-13 18:59:10 +0000
+@@ -82,6 +82,7 @@
+ #include "value-prof.h"
+ #include "alloc-pool.h"
+ #include "tree-mudflap.h"
++#include "c-tree.h"
+ 
+ #if defined (DWARF2_UNWIND_INFO) || defined (DWARF2_DEBUGGING_INFO)
+ #include "dwarf2out.h"
+@@ -101,8 +102,8 @@
+ #endif
+ 
+ static void general_init (const char *);
+-static void do_compile (void);
+-static void process_options (void);
++static void do_compile (unsigned int argc, const char **argv);
++static void process_options (unsigned int argc, const char **argv);
+ static void backend_init (void);
+ static int lang_dependent_init (const char *);
+ static void init_asm_output (const char *);
+@@ -151,6 +152,7 @@
+ /* Current position in real source file.  */
+ 
+ location_t input_location;
++source_location input_source_location;
+ 
+ struct line_maps line_table;
+ 
+@@ -291,9 +293,19 @@
+ 
+ int flag_gen_aux_info = 0;
+ 
++/* Dump pars info to .X file */
++		      
++int flag_gen_parse_info = 0;
++int flag_gen_dep_info = 0;
++int flag_gen_parse_id = -1;
++
+ /* Specified name of aux-info file.  */
+ 
+ const char *aux_info_file_name;
++const char *parse_info_file_name;
++char *trace_funcs_file_name = 0;
++int flag_gen_trace_funcs = 0;
++enum trace_types tracetype = trace_out_all;
+ 
+ /* Nonzero if we are compiling code for a shared library, zero for
+    executable.  */
+@@ -1052,6 +1064,8 @@
+      functions in this compilation unit were deferred.  */
+   coverage_finish ();
+ 
++  gimplify_finish ();
++  
+   /* Likewise for mudflap static object registrations.  */
+   if (flag_mudflap)
+     mudflap_finish_file ();
+@@ -1550,8 +1564,8 @@
+ }
+ 
+ /* Process the options that have been parsed.  */
+-static void
+-process_options (void)
++void 
++process_options (unsigned int argc, const char **argv)
+ {
+   /* Just in case lang_hooks.post_options ends up calling a debug_hook.
+      This can happen with incorrect pre-processed input. */
+@@ -1767,9 +1781,22 @@
+   /* If auxiliary info generation is desired, open the output file.
+      This goes in the same directory as the source file--unlike
+      all the other output files.  */
+-  if (flag_gen_aux_info)
++  if (flag_gen_aux_info || flag_gen_parse_info)
+     {
+       aux_info_file = fopen (aux_info_file_name, "w");
++      if (flag_gen_parse_info) {
++  	  unsigned int i = 0;
++          cpp_print.outf = aux_info_file;
++	  gen_parse_info_printf("call (%s):[",progname);
++	  for (i = 0; i < argc; i++) {
++	    gen_parse_info_printf(" %s",argv[i]);
++	  }
++	  gen_parse_info_printf("]");
++	  if (flag_gen_parse_id != -1) {
++	    gen_parse_info_printf("=%d",flag_gen_parse_id);
++	  }
++	  gen_parse_info_printf("\n");
++      }
+       if (aux_info_file == 0)
+ 	fatal_error ("can%'t open %s: %m", aux_info_file_name);
+     }
+@@ -1938,7 +1965,7 @@
+ finalize (void)
+ {
+   /* Close the dump files.  */
+-  if (flag_gen_aux_info)
++  if (flag_gen_aux_info || flag_gen_parse_info)
+     {
+       fclose (aux_info_file);
+       if (errorcount)
+@@ -1979,7 +2006,7 @@
+ 
+ /* Initialize the compiler, and compile the input file.  */
+ static void
+-do_compile (void)
++do_compile (unsigned int argc, const char **argv)
+ {
+   /* Initialize timing first.  The C front ends read the main file in
+      the post_options hook, and C++ does file timings.  */
+@@ -1987,7 +2014,7 @@
+     timevar_init ();
+   timevar_start (TV_TOTAL);
+ 
+-  process_options ();
++  process_options (argc,argv);
+ 
+   /* Don't do any more if an error has already occurred.  */
+   if (!errorcount)
+@@ -2035,7 +2062,7 @@
+ 
+   /* Exit early if we can (e.g. -help).  */
+   if (!exit_after_options)
+-    do_compile ();
++    do_compile (argc, argv);
+ 
+   if (errorcount || sorrycount)
+     return (FATAL_EXIT_CODE);
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/toplev.h gcc-4.2.1/gcc/toplev.h
+--- gcc-4.2.1.ori/gcc/toplev.h	2014-03-13 18:58:54 +0000
++++ gcc-4.2.1/gcc/toplev.h	2014-03-13 18:59:11 +0000
+@@ -107,8 +107,18 @@
+ extern const char *dump_base_name;
+ extern const char *aux_base_name;
+ extern const char *aux_info_file_name;
++extern const char *parse_info_file_name;
+ extern const char *asm_file_name;
+ extern bool exit_after_options;
++extern FILE *aux_info_file;
++extern char *trace_funcs_file_name;
++extern int flag_gen_trace_funcs;
++
++enum trace_types {
++	trace_out_none,
++	trace_out_all
++};
++extern enum trace_types tracetype;
+ 
+ extern int target_flags_explicit;
+ 
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/tree.c gcc-4.2.1/gcc/tree.c
+--- gcc-4.2.1.ori/gcc/tree.c	2014-03-13 18:58:54 +0000
++++ gcc-4.2.1/gcc/tree.c	2014-03-13 18:59:11 +0000
+@@ -564,6 +564,8 @@
+ 
+       /* We have not yet computed the alias set for this type.  */
+       TYPE_ALIAS_SET (t) = -1;
++      
++      TYPE_LOCATION (t)     = input_location;
+       break;
+ 
+     case tcc_constant:
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/tree.h gcc-4.2.1/gcc/tree.h
+--- gcc-4.2.1.ori/gcc/tree.h	2014-03-13 18:58:54 +0000
++++ gcc-4.2.1/gcc/tree.h	2014-03-13 18:59:11 +0000
+@@ -2077,6 +2077,35 @@
+ #define TYPE_CONTAINS_PLACEHOLDER_INTERNAL(NODE) \
+   (TYPE_CHECK (NODE)->type.contains_placeholder_bits)
+ 
++#define TYPE_LOCATION(NODE)					\
++  (NODE)->type.locus
++
++#define TYPE_STRUCTID(NODE) \
++  (TYPE_CHECK (NODE)->type.structid)
++#define TYPE_DEP(NODE) \
++  (TYPE_CHECK (NODE)->type.dep)
++
++#ifdef USE_MAPPED_LOCATION
++/* The source location of this expression.  Non-tree_exp nodes such as
++   decls and constants can be shared among multiple locations, so
++   return nothing.  */
++#define TYPE_FILENAME(NODE) \
++  LOCATION_FILE (TYPE_CHECK (NODE)->type.locus)
++#define TYPE_LINENO(NODE) \
++  LOCATION_LINE (TYPE_CHECK (NODE)->type.locus)
++#define TYPE_LOCUS(NODE)					\
++  (TYPE_P (NODE) ? &(NODE)->type.locus : (location_t *)NULL)
++#define TYPE_HAS_LOCATION(NODE) (TYPE_LOCATION (NODE) != UNKNOWN_LOCATION)
++#else
++#define TYPE_FILENAME(NODE) \
++  (TYPE_CHECK (NODE)->type.locus.file)
++#define TYPE_LINENO(NODE) \
++  (TYPE_CHECK (NODE)->type.locus.line)
++#define TYPE_LOCUS(NODE)					\
++  (TYPE_P (NODE) ? (NODE)->type.locus : (location_t *)NULL)
++#define TYPE_HAS_LOCATION(NODE) (TYPE_LOCUS (NODE) != NULL)
++#endif
++
+ struct die_struct;
+ 
+ struct tree_type GTY(())
+@@ -2108,6 +2137,7 @@
+   unsigned lang_flag_6 : 1;
+   unsigned user_align : 1;
+ 
++  location_t locus;
+   unsigned int align;
+   tree pointer_to;
+   tree reference_to;
+@@ -2127,6 +2157,11 @@
+   HOST_WIDE_INT alias_set;
+   /* Points to a structure whose details depend on the language in use.  */
+   struct lang_type *lang_specific;
++
++  int structid;
++  struct dep_decl * GTY((skip)) dep; 
++  
++
+ };
+ 
+ /* Define accessor macros for information about type inheritance
+@@ -2294,6 +2329,11 @@
+    function that is declared first and then defined later), this
+    information should refer to the definition.  */
+ #define DECL_SOURCE_LOCATION(NODE) (DECL_MINIMAL_CHECK (NODE)->decl_minimal.locus)
++
++#define DECL_DEP(NODE) (DECL_MINIMAL_CHECK (NODE)->decl_minimal.dep)
++
++#define DECL_DECLID(NODE) (DECL_MINIMAL_CHECK (NODE)->decl_minimal.declid)
++
+ #define DECL_SOURCE_FILE(NODE) LOCATION_FILE (DECL_SOURCE_LOCATION (NODE))
+ #define DECL_SOURCE_LINE(NODE) LOCATION_LINE (DECL_SOURCE_LOCATION (NODE))
+ #ifdef USE_MAPPED_LOCATION
+@@ -2316,11 +2356,34 @@
+ {
+   struct tree_common common;
+   location_t locus;
++  struct dep_decl * GTY((skip)) dep; 
+   unsigned int uid;
+   tree name;
+   tree context;
++  int declid;
+ };
+ 
++struct dep_decl {
++	int depid;
++	tree decl;
++	int dep_cnt;
++	int mdep_cnt;
++	struct dep_decl **dep;
++	struct cpp_macro **mdep;
++	location_t start, end;
++};
++extern struct dep_decl main_dep;
++extern struct dep_decl real_dep;
++void dep_add(struct dep_decl *d0, struct dep_decl *d1);
++void mdep_add(struct dep_decl *d0, struct cpp_macro *m);
++struct dep_decl *dep_open(void);
++struct dep_decl *dep_close(struct dep_decl *d, tree decl);
++void gen_dep_info_macro(struct cpp_macro *);
++void dep_pop(struct dep_decl *d0);
++void dep_add_top(struct dep_decl *d);
++void mdep_add_top(struct cpp_macro *m);
++
++
+ /* When computing aliasing information, we represent the memory pointed-to
+    by pointers with artificial variables called "memory tags" (MT).  There
+    are two kinds of tags, namely symbol and name:
+@@ -2694,6 +2757,8 @@
+ #define DECL_NONADDRESSABLE_P(NODE) \
+   (FIELD_DECL_CHECK (NODE)->decl_common.decl_flag_3)
+ 
++#define FIELD_DECL_TOKID(NODE) (FIELD_DECL_CHECK (NODE)->field_decl.tokid)
++
+ struct tree_field_decl GTY(())
+ {
+   struct tree_decl_common common;
+@@ -2704,6 +2769,7 @@
+   tree bit_offset;
+   tree fcontext;
+ 
++  int tokid;
+ };
+ 
+ /* A numeric unique identifier for a LABEL_DECL.  The UID allocation is
+@@ -2734,9 +2800,13 @@
+   struct tree_decl_with_rtl common;
+ };
+ 
++#define CONST_DECL_TOKID(NODE) ((NODE)->const_decl.tokid)
++
+ struct tree_const_decl GTY(())
+ {
+   struct tree_decl_with_rtl common;
++  int tokid;
++
+ };
+ 
+ /* For a PARM_DECL, records the data type used to pass the argument,
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.2.1.ori/gcc/varasm.c gcc-4.2.1/gcc/varasm.c
+--- gcc-4.2.1.ori/gcc/varasm.c	2014-03-13 18:58:54 +0000
++++ gcc-4.2.1/gcc/varasm.c	2014-03-13 18:59:11 +0000
+@@ -988,6 +988,12 @@
+   return true;
+ }
+ 
++int f1() 
++{
++	fprintf(stderr,"Found\n");
++}
++
++
+ /* Create the DECL_RTL for a VAR_DECL or FUNCTION_DECL.  DECL should
+    have static storage duration.  In other words, it should not be an
+    automatic variable, including PARM_DECLs.
+@@ -1004,6 +1010,10 @@
+   int reg_number;
+   rtx x;
+ 
++  if (TREE_CODE (decl) == PARM_DECL)
++	  f1();
++  
++  
+   /* Check that we are not being given an automatic variable.  */
+   gcc_assert (TREE_CODE (decl) != PARM_DECL
+ 	      && TREE_CODE (decl) != RESULT_DECL);

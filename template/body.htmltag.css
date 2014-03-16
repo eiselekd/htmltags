@@ -1,0 +1,201 @@
+/* beige: macro name: "#define [N] ..." (without params), declaration ids: " int [a]" */
+span.c_macn {
+      color: #b8860b;
+}
+/* purple: keywords : [for] (...) */
+span.c_keyw {
+      color: #a020f0;
+}
+/* green : type ids : [int|long...] */
+span.c_typid {
+      color: #228b22;
+}
+/* red : comment "[/* ... */]" */
+span.c_comment {
+      color: #b22222;
+}
+/* blue :  macro name & function call "#define [N]( ... & [F](..).. */
+span.c_fcalln {
+      color: #0000ff;
+}
+/* pink :  include file name "#include [<"FN">] */
+span.c_include {
+      color: #bc8f8f;
+}
+/* lightblue :  NULL "[NULL] */
+span.c_null {
+      color: #5f9ea0;
+}
+
+
+
+
+span.parseerror {
+      background-color: #fb0000;
+}
+
+a.def {
+      color: #aaaaaa;
+}
+
+a.close {
+      color: #aaaa88;
+}
+
+pre.tooltip {
+margin: 0px;
+padding: 0px;
+}
+
+a.macrotool {
+color: #aaaaaa;
+}
+
+a.tooltip {
+font-size:11px;
+}
+
+a.export {
+font-size:11px;
+color: #aa0000;
+}
+
+span.export {
+    font-size:11px;
+}
+
+a.noref {
+      text-decoration: underline;
+}
+
+
+
+a.noref:hover
+{
+text-decoration: underline;
+}
+
+pre {
+line-height: 1.5em;
+}
+
+span.macrou {
+background-color:  #fbfbfb;
+margin: 2px;
+padding-top: 2px;
+padding-bottom: 2px;
+border: 1px solid grey;
+}
+
+span.macroe {
+background-color: #f0f0f0;
+margin: 2px;
+border: 1px solid grey;
+}
+
+span.structpre {
+width:3em;
+}
+
+span.inactive {
+color: #eeeeee;
+}
+
+div.fincu {
+background-color: #f0f0f0;
+margin-left:0px;
+}
+
+div.fince {
+background-color: #f0f0f0;
+margin-left:8px;
+border-left: 1px solid grey;
+}
+
+div.fincmarke {
+background-color: #f0f0f0;
+}
+
+div.fincmarku {
+background-color: #f0f0f0;
+}
+
+
+div.finc {
+background-color: #f0f0f0;
+}
+
+div.idx {
+margin-left:8px;
+border-left: 1px solid grey;
+}
+      
+.divDragTitle {
+    position: absolute;
+    background-color: #aaaaf0;
+    padding:0px; margin:0px;
+    border:1px blue solid;
+    display:block;
+}
+
+.divDragTitle table {
+    border-spacing:0px; width:100%;
+    
+}
+
+span.dragcaption {
+    font-size:11px;
+}
+
+a.dragbutton {
+      font-size:11px;
+}
+
+.divDragTitle table tr td {
+    padding:0px;
+    font-family:Arial,Helvetica,sans-serif;
+    font-size:11px; font-weight:bold;
+    color:#FFFFFF;
+}
+
+
+.divDragContent {
+    background-color: #FFFFFF;
+    padding:0px; margin:-1px;
+    border:1px black solid;
+    display:block;
+}
+
+.divTitleButton {
+    border:0px;
+}
+
+
+.dtree {
+	font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+	font-size: 11px;
+	color: #666;
+	white-space: nowrap;
+}
+.dtree img {
+	border: 0px;
+	vertical-align: middle;
+}
+.dtree a {
+	color: #333;
+	text-decoration: none;
+}
+.dtree a.node, .dtree a.nodeSel {
+	white-space: nowrap;
+	padding: 1px 2px 1px 2px;
+}
+.dtree a.node:hover, .dtree a.nodeSel:hover {
+	color: #333;
+	text-decoration: underline;
+}
+.dtree a.nodeSel {
+	background-color: #c0d2ec;
+}
+.dtree .clip {
+	overflow: hidden;
+}

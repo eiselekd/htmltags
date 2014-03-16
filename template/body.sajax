@@ -1,0 +1,227 @@
+¶re_sajax_config¶
+¶re_sajax¶
+
+<?php
+
+// Leonardo Lorieri
+// My first SAJAX implementention, few lines of inspiration
+// A good way to understand SAJAX programming
+//
+// Work Flow:
+// 1- starting by the <body onload="get_date()">
+// 2- loading the server's date from the php function,
+//      calling the javascript function to show it.
+// 3- scheduling another load to the next second
+//
+// Disclaimer: Hey! I dont speak english
+// Under (put your choice here) license
+
+function taggetdbentry($linkid,$fid,$id) {
+        $id = trim($id);
+        $r = "&lt;not found&gt;";
+        $sajax_server = "¶re_sajax_server_real¶";
+        $sajax_user   = "¶re_sajax_user_real¶";
+        $sajax_pass   = "¶re_sajax_pass_real¶";
+        $sajax_db     = "¶re_sajax_db_real¶";
+        $sajax_table  = "¶re_sajax_prefix_real¶_macro";
+
+        if (!($conn = mysql_connect($sajax_server, $sajax_user, $sajax_pass))) {
+                return ("body.htmltag.ajax.js.php:Error connecting to $sajax_user:$sajax_pass\@$sajax_server");     
+        }
+        mysql_select_db($sajax_db);
+        
+        $query  = "SELECT htmltag_macro_name FROM htmltag_macro WHERE (htmltag_macro_fid=$fid) AND (htmltag_macro_linkid=$linkid) AND (SUBSTRING(htmltag_macro_name,1,".strlen($id).")='$id') ORDER BY htmltag_macro_name ";
+        $r = "";//$query<br>";
+        //$r = "$query<br>";
+        $result = mysql_query($query);
+        while ($row = mysql_fetch_array($result, MYSQL_ASSOC)) {
+             $r .= $row['htmltag_macro_name']."<br>";
+        } 
+        mysql_close($conn);
+	
+	return $r;
+}
+
+
+function getdbentry($fid,$id) {
+        global $sajax_server, $sajax_user, $sajax_pass, $sajax_db, $sajax_table;
+	global $cfw_db, $cfw_fromdb;
+		
+        if (!$fid) {
+                $fid = 0;
+        }       
+        $r = "&lt;not found&gt;";
+	
+	if ($cfw_fromdb) {
+            $fn = "$cfw_db/html/0/$fid/$id";
+            $r = implode( "", @file( $fn ) ); 
+        } else {
+	    if (!($conn = mysql_connect($sajax_server, $sajax_user, $sajax_pass))) {
+                return ("body.htmltag.ajax.js.php:getdbentry():Error connecting to $sajax_user:$sajax_pass\@$sajax_server");     
+       	    }
+            mysql_select_db($sajax_db);
+        
+	    if ($fid >= 0) {
+                $query  = "SELECT htmltag_html_text FROM $sajax_table WHERE htmltag_html_fid=$fid AND htmltag_html_name='$id'";
+            } else {
+                $fid = -$fid;
+                $query  = "SELECT htmltag_html_text FROM $sajax_table WHERE htmltag_html_linkid=$fid AND htmltag_html_name='$id'";
+            }
+            $r = "&lt;getdbentry: not found: $query&gt;";
+            $result = mysql_query($query);
+            if ($row = mysql_fetch_array($result, MYSQL_ASSOC)) {
+                $r = $row['htmltag_html_text'];
+            } 
+            mysql_close($conn);
+        }
+	if ($cfw_fromdb == 2) {
+           $r = bzdecompress($r);
+	}
+        return $r;
+}
+
+function lgetdbentry($fid,$id) {
+        global $sajax_server, $sajax_user, $sajax_pass, $sajax_db, $sajax_table, $sajax_ltable;
+	global $cfw_serverbase;
+	global $cfw_db, $cfw_fromdb;
+        if (!$fid) {
+                $fid = 0;
+        }       
+        $r = "&lt;not found&gt;";
+	
+	if ($cfw_fromdb) {
+	    $fn = "$cfw_db/export/0/$id";
+            $r = implode( "", @file( $fn ) ); 
+        } else {
+	    if (!($conn = mysql_connect($sajax_server, $sajax_user, $sajax_pass))) {
+                return ("body.htmltag.ajax.js.php:getdbentry():Error connecting to $sajax_user:$sajax_pass\@$sajax_server");     
+            }
+            mysql_select_db($sajax_db);
+        
+            $query  = "SELECT htmltag_export_url FROM $sajax_ltable WHERE htmltag_export_name='$id' ";
+        
+	    $r = "&lt;lgetdbentry:not found: $query&gt;";
+            $result = mysql_query($query);
+            if ($row = mysql_fetch_array($result, MYSQL_ASSOC)) {
+                    $r = $row['htmltag_export_url'];
+            }  else {
+                    $r = "";
+            }	
+	
+	    mysql_close($conn);
+        }
+	if ($cfw_fromdb == 2) {
+           $r = bzdecompress($r);
+	}
+        $r =preg_replace( "/--server--/", $cfw_serverbase, $r);
+        return "$r";
+}
+
+//starting CFWSAJAX stuff
+$cfwsajax_request_type = "GET";
+cfwsajax_init();
+cfwsajax_export("getdbentry");
+cfwsajax_export("lgetdbentry");
+cfwsajax_export("taggetdbentry");
+cfwsajax_handle_client_request();
+
+?>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+<head>
+<link rel="stylesheet" type="text/css" href="¶re_jsfilep¶htmltag.css" />
+</head>
+<body onLoad="onloadPage()">
+<div id='maindiv'>
+<script language="JavaScript1.3" type="text/javascript" >
+<?php cfwsajax_show_javascript();?> 
+document.htmltagid = "htmltag"; 
+document.htmltagid_other = "htmltagidx"; 
+document.htmltagid_idx = "htmltagidx"; 
+¶re_unify_content_main¶
+¶re_unify_content¶
+</script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.ajax.js.php"></script>
+<!--unifyjs-start
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.win.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.span.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.xml.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.path.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.pathdata.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.hash.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.css.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.tree.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.ptree.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.jquery.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.idx.js"></script>
+<script language="JavaScript1.3" type="text/javascript" src="¶re_jsfilep¶htmltag.fbrowse.js"></script>
+unifyjs-end-->
+<script language="JavaScript1.2" type="text/javascript">
+top[document.htmltagid].idx._opencloseother = top[document.htmltagid].idx.opencloseother;
+top[document.htmltagid].mainfileid = ¶re_sajax_fid¶;
+top[document.htmltagid].mainfilename = '¶re_sajax_mainfileid¶';
+</script>
+</div>
+<div id="nono"></div>
+<script language="JavaScript1.3" type="text/javascript">
+¶re_pathinit_all¶
+function onloadPage() {
+top[document.htmltagid].hash.hashListener.init();
+    x_getdbentry(top["htmltag"].path.pathdef.fileid,top["htmltag"].path.pathdef.filename,function (data) {
+            var repobj = document.getElementById('maindiv');
+            top.htmltag.replace(repobj,data);
+        });
+
+if (top.idx) {
+/*idx = new top[document.htmltagid]._ptree("idx.tree",top[document.htmltagid].path.pathdef,top.main.location);
+document.getElementById('nono2').innerHTML = idx.tree._toString();
+*/
+}
+/*
+top.indexes = new top[document.htmltagid]._pindex("top.indexes.tree");
+top.indexes.addPath.call(top.indexes,"t");
+document.getElementById('nono').innerHTML = top.indexes.tree._toString();*/
+setTimeout("_setidx()", 100);
+
+<?php
+if (!(empty($_GET["fid"]) && empty($_POST["fid"]))) {
+if (! empty($_GET["fid"])) {
+$fid = $_GET["fid"];
+$aid = $_GET["aid"];
+} else if (!empty($_POST["fid"])) {
+$fid = $_POST["fid"];
+$aid = $_POST["aid"];
+}
+?>top[document.htmltagid].path.gotolocationopen(0,0,<?php echo "$fid,$aid"; ?>);
+<?php
+} else {
+echo ("/* no open location */\n");
+}
+
+?>
+}
+function _setidx() {
+if (top["htmltagidx"].idx) {
+if (top["htmltagidx"].loaded == 1) {
+top["htmltagidx"].idx.setidx(top["htmltag"].path.pathdef);
+} else {
+setTimeout("_setidx()", 100);
+}
+}
+}
+
+function add() {
+idx = new top[document.htmltagid]._ptree("idx.tree",top[document.htmltagid].path.pathdef,top.main.location);
+idx2 = new top[document.htmltagid]._ptree("idx2.tree",top[document.htmltagid].path.pathdef,top.main.location);
+/*document.getElementById('nono2').innerHTML = idx.tree._toString();*/
+top.indexes.addPath.call(top.indexes,"soft/include/t",idx.tree)
+top.indexes.addPath.call(top.indexes,"soft/include",idx2.tree)
+}
+
+</script>
+</body>
+</html>
+
+
