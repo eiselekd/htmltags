@@ -580,15 +580,175 @@ diff -Naur gcc-src.ori/libcpp/include/cpp-id-data.h gcc-src/libcpp/include/cpp-i
  };
 diff -Naur gcc-src.ori/libcpp/include/cpplib.h gcc-src/libcpp/include/cpplib.h
 --- gcc-src.ori/libcpp/include/cpplib.h	2015-02-01 12:12:31.000000000 +0100
-+++ gcc-src/libcpp/include/cpplib.h	2015-02-01 16:25:11.184772395 +0100
-@@ -139,6 +139,7 @@
-   TK(MACRO_ARG,		NONE)	 /* Macro argument.  */			\
-   TK(PRAGMA,		NONE)	 /* Only for deferred pragmas.  */	\
-   TK(PRAGMA_EOL,	NONE)	 /* End-of-line for deferred pragmas.  */ \
-+  TK(PARSEINFOSTACK,	NONE)	 /* push parseinfo token on path stack.  */ \
-   TK(PADDING,		NONE)	 /* Whitespace for -E.	*/
++++ gcc-src/libcpp/include/cpplib.h	2015-02-01 18:58:44.732921409 +0100
+@@ -57,92 +57,93 @@
+    add or remove anything in the first group.  */
  
- #define OP(e, s) CPP_ ## e,
+ #define TTYPE_TABLE							\
+-  OP(EQ,		"=")						\
+-  OP(NOT,		"!")						\
+-  OP(GREATER,		">")	/* compare */				\
+-  OP(LESS,		"<")						\
+-  OP(PLUS,		"+")	/* math */				\
+-  OP(MINUS,		"-")						\
+-  OP(MULT,		"*")						\
+-  OP(DIV,		"/")						\
+-  OP(MOD,		"%")						\
+-  OP(AND,		"&")	/* bit ops */				\
+-  OP(OR,		"|")						\
+-  OP(XOR,		"^")						\
+-  OP(RSHIFT,		">>")						\
+-  OP(LSHIFT,		"<<")						\
++  OP(AOP, EQ,		"=")						\
++  OP(AOP, NOT,		"!")						\
++  OP(AOP, GREATER,		">")	/* compare */				\
++  OP(AOP, LESS,		"<")						\
++  OP(AOP, PLUS,		"+")	/* math */				\
++  OP(AOP, MINUS,		"-")						\
++  OP(AOP, MULT,		"*")						\
++  OP(AOP, DIV,		"/")						\
++  OP(AOP, MOD,		"%")						\
++  OP(AOP, AND,		"&")	/* bit ops */				\
++  OP(AOP, OR,		"|")						\
++  OP(AOP, XOR,		"^")						\
++  OP(AOP, RSHIFT,		">>")						\
++  OP(AOP, LSHIFT,		"<<")						\
+ 									\
+-  OP(COMPL,		"~")						\
+-  OP(AND_AND,		"&&")	/* logical */				\
+-  OP(OR_OR,		"||")						\
+-  OP(QUERY,		"?")						\
+-  OP(COLON,		":")						\
+-  OP(COMMA,		",")	/* grouping */				\
+-  OP(OPEN_PAREN,	"(")						\
+-  OP(CLOSE_PAREN,	")")						\
+-  TK(EOF,		NONE)						\
+-  OP(EQ_EQ,		"==")	/* compare */				\
+-  OP(NOT_EQ,		"!=")						\
+-  OP(GREATER_EQ,	">=")						\
+-  OP(LESS_EQ,		"<=")						\
++  OP(BOP, COMPL,		"~")						\
++  OP(BOP, AND_AND,		"&&")	/* logical */				\
++  OP(BOP, OR_OR,		"||")						\
++  OP(AOP, QUERY,		"?")						\
++  OP(AOP, COLON,		":")						\
++  OP(GRP, COMMA,		",")	/* grouping */				\
++  OP(GRP, OPEN_PAREN,	"(")						\
++  OP(GRP, CLOSE_PAREN,	")")						\
++  TK(PAD, EOF,		NONE)						\
++  OP(BOP,EQ_EQ,		"==")	/* compare */				\
++  OP(BOP,NOT_EQ,		"!=")						\
++  OP(BOP,GREATER_EQ,	">=")						\
++  OP(BOP,LESS_EQ,		"<=")						\
+ 									\
+   /* These two are unary + / - in preprocessor expressions.  */		\
+-  OP(PLUS_EQ,		"+=")	/* math */				\
+-  OP(MINUS_EQ,		"-=")						\
++  OP(AOP,PLUS_EQ,		"+=")	/* math */			\
++  OP(AOP,MINUS_EQ,		"-=")						\
+ 									\
+-  OP(MULT_EQ,		"*=")						\
+-  OP(DIV_EQ,		"/=")						\
+-  OP(MOD_EQ,		"%=")						\
+-  OP(AND_EQ,		"&=")	/* bit ops */				\
+-  OP(OR_EQ,		"|=")						\
+-  OP(XOR_EQ,		"^=")						\
+-  OP(RSHIFT_EQ,		">>=")						\
+-  OP(LSHIFT_EQ,		"<<=")						\
++  OP(AOP, MULT_EQ,		"*=")						\
++  OP(AOP, DIV_EQ,		"/=")						\
++  OP(AOP, MOD_EQ,		"%=")						\
++  OP(AOP, AND_EQ,		"&=")	/* bit ops */				\
++  OP(AOP, OR_EQ,		"|=")						\
++  OP(AOP, XOR_EQ,		"^=")						\
++  OP(AOP, RSHIFT_EQ,		">>=")						\
++  OP(AOP, LSHIFT_EQ,		"<<=")						\
+   /* Digraphs together, beginning with CPP_FIRST_DIGRAPH.  */		\
+-  OP(HASH,		"#")	/* digraphs */				\
+-  OP(PASTE,		"##")						\
+-  OP(OPEN_SQUARE,	"[")						\
+-  OP(CLOSE_SQUARE,	"]")						\
+-  OP(OPEN_BRACE,	"{")						\
+-  OP(CLOSE_BRACE,	"}")						\
++  OP(TRI,HASH,		"#")	/* digraphs */				\
++  OP(TRI,PASTE,		"##")						\
++  OP(BLK,OPEN_SQUARE,	"[")						\
++  OP(BLK,CLOSE_SQUARE,	"]")						\
++  OP(BLK,OPEN_BRACE,	"{")						\
++  OP(BLK,CLOSE_BRACE,	"}")						\
+   /* The remainder of the punctuation.	Order is not significant.  */	\
+-  OP(SEMICOLON,		";")	/* structure */				\
+-  OP(ELLIPSIS,		"...")						\
+-  OP(PLUS_PLUS,		"++")	/* increment */				\
+-  OP(MINUS_MINUS,	"--")						\
+-  OP(DEREF,		"->")	/* accessors */				\
+-  OP(DOT,		".")						\
+-  OP(SCOPE,		"::")						\
+-  OP(DEREF_STAR,	"->*")						\
+-  OP(DOT_STAR,		".*")						\
+-  OP(ATSIGN,		"@")  /* used in Objective-C */			\
++  OP(GRP, SEMICOLON,		";")	/* structure */				\
++  OP(GRP, ELLIPSIS,		"...")						\
++  OP(AOP,PLUS_PLUS,		"++")	/* increment */			\
++  OP(AOP,MINUS_MINUS,	"--")						\
++  OP(GRP,DEREF,		"->")	/* accessors */				\
++  OP(GRP,DOT,		".")						\
++  OP(GRP,SCOPE,		"::")						\
++  OP(GRP,DEREF_STAR,	"->*")						\
++  OP(GRP,DOT_STAR,		".*")						\
++  OP(GRP,ATSIGN,		"@")  /* used in Objective-C */			\
+ 									\
+-  TK(NAME,		IDENT)	 /* word */				\
+-  TK(AT_NAME,		IDENT)	 /* @word - Objective-C */		\
+-  TK(NUMBER,		LITERAL) /* 34_be+ta  */			\
++  TK(TOK,NAME,		IDENT)	 /* word */				\
++  TK(TOK,AT_NAME,		IDENT)	 /* @word - Objective-C */		\
++  TK(TOK,NUMBER,		LITERAL) /* 34_be+ta  */			\
+ 									\
+-  TK(CHAR,		LITERAL) /* 'char' */				\
+-  TK(WCHAR,		LITERAL) /* L'char' */				\
+-  TK(CHAR16,		LITERAL) /* u'char' */				\
+-  TK(CHAR32,		LITERAL) /* U'char' */				\
+-  TK(OTHER,		LITERAL) /* stray punctuation */		\
++  TK(TOK,CHAR,		LITERAL) /* 'char' */				\
++  TK(TOK,WCHAR,		LITERAL) /* L'char' */				\
++  TK(TOK,CHAR16,		LITERAL) /* u'char' */				\
++  TK(TOK,CHAR32,		LITERAL) /* U'char' */				\
++  TK(TOK,OTHER,		LITERAL) /* stray punctuation */		\
+ 									\
+-  TK(STRING,		LITERAL) /* "string" */				\
+-  TK(WSTRING,		LITERAL) /* L"string" */			\
+-  TK(STRING16,		LITERAL) /* u"string" */			\
+-  TK(STRING32,		LITERAL) /* U"string" */			\
+-  TK(OBJC_STRING,	LITERAL) /* @"string" - Objective-C */		\
+-  TK(HEADER_NAME,	LITERAL) /* <stdio.h> in #include */		\
++  TK(STR,STRING,		LITERAL) /* "string" */			\
++  TK(STR,WSTRING,		LITERAL) /* L"string" */			\
++  TK(STR,STRING16,		LITERAL) /* u"string" */			\
++  TK(STR,STRING32,		LITERAL) /* U"string" */			\
++  TK(TOK,OBJC_STRING,	LITERAL) /* @"string" - Objective-C */		\
++  TK(TOK,HEADER_NAME,	LITERAL) /* <stdio.h> in #include */		\
+ 									\
+-  TK(COMMENT,		LITERAL) /* Only if output comments.  */	\
++  TK(CMT,COMMENT,		LITERAL) /* Only if output comments.  */ \
+ 				 /* SPELL_LITERAL happens to DTRT.  */	\
+-  TK(MACRO_ARG,		NONE)	 /* Macro argument.  */			\
+-  TK(PRAGMA,		NONE)	 /* Only for deferred pragmas.  */	\
+-  TK(PRAGMA_EOL,	NONE)	 /* End-of-line for deferred pragmas.  */ \
+-  TK(PADDING,		NONE)	 /* Whitespace for -E.	*/
++  TK(CMT,MACRO_ARG,		NONE)	 /* Macro argument.  */			\
++  TK(CMT,PRAGMA,		NONE)	 /* Only for deferred pragmas.  */	\
++  TK(CMT,PRAGMA_EOL,	NONE)	 /* End-of-line for deferred pragmas.  */ \
++  TK(CMT,PARSEINFOSTACK,	NONE)	 /* push parseinfo token on path stack.  */ \
++  TK(PAD,PADDING,		NONE)	 /* Whitespace for -E.	*/
+ 
+-#define OP(e, s) CPP_ ## e,
+-#define TK(e, s) CPP_ ## e,
++#define OP(sh,e, s) CPP_ ## e,
++#define TK(sh,e, s) CPP_ ## e,
+ enum cpp_ttype
+ {
+   TTYPE_TABLE
 @@ -179,6 +180,8 @@
  #define PURE_ZERO	(1 << 7) /* Single 0 digit, used by the C++ frontend,
  				    set in c-lex.c.  */
@@ -885,8 +1045,8 @@ diff -Naur gcc-src.ori/libcpp/internal.h gcc-src/libcpp/internal.h
  extern void _cpp_maybe_push_include_file (cpp_reader *);
 diff -Naur gcc-src.ori/libcpp/lex.c gcc-src/libcpp/lex.c
 --- gcc-src.ori/libcpp/lex.c	2009-11-11 21:21:14.000000000 +0100
-+++ gcc-src/libcpp/lex.c	2015-02-01 12:51:43.468565250 +0100
-@@ -39,6 +39,8 @@
++++ gcc-src/libcpp/lex.c	2015-02-01 19:00:00.788922639 +0100
+@@ -39,11 +39,13 @@
    const unsigned char *name;
  };
  
@@ -895,6 +1055,13 @@ diff -Naur gcc-src.ori/libcpp/lex.c gcc-src/libcpp/lex.c
  static const unsigned char *const digraph_spellings[] =
  { UC"%:", UC"%:%:", UC"<:", UC":>", UC"<%", UC"%>" };
  
+-#define OP(e, s) { SPELL_OPERATOR, UC s  },
+-#define TK(e, s) { SPELL_ ## s,    UC #e },
++#define OP(sh,e, s) { SPELL_OPERATOR, UC s  },
++#define TK(sh,e, s) { SPELL_ ## s,    UC #e },
+ static const struct token_spelling token_spellings[N_TTYPES] = { TTYPE_TABLE };
+ #undef OP
+ #undef TK
 @@ -53,7 +55,7 @@
  
  static void add_line_note (cpp_buffer *, const uchar *, unsigned int);
@@ -1288,7 +1455,7 @@ diff -Naur gcc-src.ori/libcpp/line-map.c gcc-src/libcpp/line-map.c
      }
 diff -Naur gcc-src.ori/libcpp/macro.c gcc-src/libcpp/macro.c
 --- gcc-src.ori/libcpp/macro.c	2015-02-01 12:12:31.000000000 +0100
-+++ gcc-src/libcpp/macro.c	2015-02-01 17:16:06.844821815 +0100
++++ gcc-src/libcpp/macro.c	2015-02-01 19:38:20.436959832 +0100
 @@ -39,6 +39,14 @@
    unsigned int expanded_count;	/* # of tokens in expanded argument.  */
  };
@@ -2067,7 +2234,7 @@ diff -Naur gcc-src.ori/libcpp/macro.c gcc-src/libcpp/macro.c
  /* Parse a macro and save its expansion.  Returns nonzero on success.  */
  bool
  _cpp_create_definition (cpp_reader *pfile, cpp_hashnode *node)
-@@ -1794,18 +2265,35 @@
+@@ -1794,18 +2265,37 @@
    macro->params = 0;
    macro->paramc = 0;
    macro->variadic = 0;
@@ -2079,6 +2246,8 @@ diff -Naur gcc-src.ori/libcpp/macro.c gcc-src/libcpp/macro.c
    /* To suppress some diagnostics.  */
    macro->syshdr = pfile->buffer && pfile->buffer->sysp != 0;
 +  macro->macroid = macroid++;
++  macro->note = 0;
++  macro->notecnt = 0;
 +  macro->name = 0;
 +  if (pfile->cb.parse_info_cb.flag_gen_dep_info ) {
 +	  macro->name = XNEWVEC(char ,NODE_LEN (node) + 2);
