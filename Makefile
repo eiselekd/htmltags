@@ -81,3 +81,38 @@ gcc-pinfo-merge:
 	rm $(filter-out %.new.diff,$(wildcard $(CURDIR)/$(HTMLTAGROOT)/libcpp-$(GCC-PINFO-VERSION)*.diff))
 	mv $(LIBCPP_DIFF_CUR).latest $(CURDIR)/$(HTMLTAGROOT)/libcpp-$(GCC-PINFO-VERSION).diff
 
+
+#4.4.7
+#apt-get source gcc-4.4
+#cd gcc-4.4-4.4.7/
+#2059  sudo apt-get build-dep gcc-4.4
+#2060  debuild -i -us -uc -b 2>&1 | tee log.txt
+#2062  sudo apt-get install devscripts
+#2063  debuild -i -us -uc -b 2>&1 | tee log.txt
+
+# Configured with: -v
+#          --with-pkgversion='Ubuntu/Linaro 4.4.7-8ubuntu1'
+#          --with-bugurl='file:///usr/share/doc/gcc-4.4/README.Bugs'
+#          --enable-languages=c,c++,fortran
+#          --prefix=/usr
+#          --program-suffix=-4.4
+#          --enable-shared
+#          --enable-linker-build-id
+#          --with-system-zlib
+#          --libexecdir=/usr/lib
+#          --without-included-gettext
+#          --enable-threads=posix
+#          --with-gxx-include-dir=/usr/include/c++/4.4
+#          --libdir=/usr/lib
+#          --enable-nls
+#          --with-sysroot=/
+#          --enable-clocale=gnu
+#          --enable-libstdcxx-debug
+#          --disable-libmudflap
+#          --disable-werror
+#          --with-arch-32=i686
+#          --with-tune=generic
+#          --enable-checking=release
+#          --build=x86_64-linux-gnu
+#          --host=x86_64-linux-gnu
+#          --target=x86_64-linux-gnu
