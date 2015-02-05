@@ -6,8 +6,8 @@ M_EXTDIR=tmp_ext
 # Create patched gcc-pinfo compiler
 #==================================
 GCC-PINFO-VERSION?=4.2.1
-DOWNLOAD_GCC-4.2.1=gcc-core-$(GCC-PINFO-VERSION).tar.bz2
-DOWNLOAD_G++-4.2.1=gcc-g++-$(GCC-PINFO-VERSION).tar.bz2
+DOWNLOAD_GCC-$(GCC-PINFO-VERSION)=gcc-core-$(GCC-PINFO-VERSION).tar.bz2
+DOWNLOAD_G++-$(GCC-PINFO-VERSION)=gcc-g++-$(GCC-PINFO-VERSION).tar.bz2
 DOWNLOAD_BASE=ftp://ftp.gnu.org/gnu/gcc/gcc-$(GCC-PINFO-VERSION)
 GCC_DIFF_CUR=$(CURDIR)/gcc-$(GCC-PINFO-VERSION).diff
 GCC_DIFF_NEXT=$(CURDIR)/gcc-$(GCC-PINFO-VERSION)-next.diff
