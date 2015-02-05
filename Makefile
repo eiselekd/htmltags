@@ -47,9 +47,10 @@ gcc-pinfo-configure:
 	-mkdir $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build
 	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build; ../gcc-$(GCC-PINFO-VERSION)/configure \
         --prefix=/opt/gcc-$(GCC-PINFO-VERSION) --disable-nls --enable-languages=c,c++ \
-	 --target=x86_64-linux-gnu --host=x86_64-linux-gnu --build=x86_64-linux-gnu  \
+	--target=x86_64-linux-gnu --host=x86_64-linux-gnu --build=x86_64-linux-gnu  \
 	--with-gnu-ld --disable-bootstrap --program-suffix=-pinfo --disable-multilib --enable-checking=release  \
         --disable-shared --disable-nls --disable-libstdcxx-pch \
+	--with-sysroot=/ \
 	| tee _configure.out 
 
 #
@@ -80,6 +81,24 @@ gcc-pinfo-merge:
 	cp $(LIBCPP_DIFF_CUR) $(LIBCPP_DIFF_CUR).latest
 	rm $(filter-out %.new.diff,$(wildcard $(CURDIR)/$(HTMLTAGROOT)/libcpp-$(GCC-PINFO-VERSION)*.diff))
 	mv $(LIBCPP_DIFF_CUR).latest $(CURDIR)/$(HTMLTAGROOT)/libcpp-$(GCC-PINFO-VERSION).diff
+
+# get ubuntu 4.4.7 sources and make tar from it
+gcc-pinfo-preapre-ubuntu:
+	sudo apt-get build-dep gcc-4.4
+	sudo apt-get install devscripts
+	rm -rf gcc-4.4-4.4.7
+	apt-get source gcc-4.4
+	cd gcc-4.4-4.4.7; debuild -i -us -uc -b 2>&1 | tee log.txt
+
+gcc-pinfo-preapre-ubuntu-tar:
+	rm -rf tmp_ext/gcc-g++-4.4.7-ubuntu.tar.bz2
+	rm -rf tmp_ext/gcc-core-4.4.7-ubuntu.tar.bz2
+	cd gcc-4.4-4.4.7; mv src gcc-4.4.7-ubuntu; \
+		tar cvf ../tmp_ext/gcc-core-4.4.7-ubuntu.tar gcc-4.4.7-ubuntu
+	bzip2 tmp_ext/gcc-core-4.4.7-ubuntu.tar
+	mkdir -p tmp/gcc/gcc-4.4.7-ubuntu; cd tmp/gcc; \
+		tar cvf ../../tmp_ext/gcc-g++-4.4.7-ubuntu.tar gcc-4.4.7-ubuntu
+	bzip2 tmp_ext/gcc-g++-4.4.7-ubuntu.tar
 
 
 #4.4.7
