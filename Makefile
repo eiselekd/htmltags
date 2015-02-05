@@ -47,7 +47,7 @@ gcc-pinfo-configure-ex:
 	export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu; make gcc-pinfo-configure
 gcc-pinfo-compile-ex:
 	export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu; make gcc-pinfo-compile
-gcc-pinfo-isntall-ex:
+gcc-pinfo-install-ex:
 	export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu; make gcc-pinfo-install
 
 

@@ -2120,7 +2120,7 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7-ubuntu.ori/gcc/gcc.pre
 --- gcc-4.4.7-ubuntu.ori/gcc/gcc.pre	1970-01-01 01:00:00.000000000 +0100
 +++ gcc-4.4.7-ubuntu/gcc/gcc.pre	2015-02-05 15:18:19.998651486 +0100
 @@ -0,0 +1,175 @@
-+#!/bin/sh
++#!/bin/bash
 +#
 +# allow us to do flat processing if the flag -Wl,-elf2flt or -elf2flt to
 +# the 'C' compiler or linker respectively
@@ -2299,7 +2299,7 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7-ubuntu.ori/gcc/gcc.pre
 --- gcc-4.4.7-ubuntu.ori/gcc/gcc.pre.sh	1970-01-01 01:00:00.000000000 +0100
 +++ gcc-4.4.7-ubuntu/gcc/gcc.pre.sh	2015-02-05 15:18:19.998651486 +0100
 @@ -0,0 +1,50 @@
-+#!/bin/sh
++#!/bin/bash
 +
 +ARG1=
 +GCCREAL="$0.real"            # the original renamed-linker

@@ -2921,6 +2921,10 @@ htmltag_export_desc ) values (?,?,?,?,?,?)");
 			       $htmltag_html_fid,
 			       $htmltag_html_linkid,
 			       '');
+
+		#print("Export : $n, $funcid,$html,$htmltag_html_fid,$htmltag_html_linkid,
+			       
+		
 	    }
 	}
     }
