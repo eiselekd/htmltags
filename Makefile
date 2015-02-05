@@ -43,6 +43,14 @@ gcc-pinfo-prepare:
 gcc-pinfo-clean:
 	-rm -rf $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build/*
 
+gcc-pinfo-configure-ex:
+	export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu; make gcc-pinfo-configure
+gcc-pinfo-compile-ex:
+	export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu; make gcc-pinfo-compile
+gcc-pinfo-isntall-ex:
+	export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu; make gcc-pinfo-install
+
+
 gcc-pinfo-configure:
 	-mkdir $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build
 	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build; ../gcc-$(GCC-PINFO-VERSION)/configure \
@@ -54,7 +62,6 @@ gcc-pinfo-configure:
 	| tee _configure.out 
 
 #
-
 gcc-pinfo-compile-install: gcc-pinfo-compile gcc-pinfo-install
 
 gcc-pinfo-compile:
@@ -62,6 +69,7 @@ gcc-pinfo-compile:
 
 gcc-pinfo-compile-gcc:
 	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build; make gcc | tee _compile.out
+
 
 gcc-pinfo-install:
 	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build; make install | tee _install.out
