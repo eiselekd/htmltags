@@ -5,9 +5,18 @@ M_EXTDIR=tmp_ext
 #==================================
 # Create patched gcc-pinfo compiler
 #==================================
-GCC-PINFO-VERSION?=4.2.1
+#GCC-PINFO-VERSION?=4.2.1
+#GCC-PINFO-VERSION?=4.4.7
+#GCC-PINFO-VERSION?=4.4.7-ubuntu
+GCC-PINFO-VERSION?=4.9.2
+GCC-PINFO-SINGLE-4.9.2=1
+ifeq ($(GCC-PINFO-SINGLE-$(GCC-PINFO-VERSION)),1)
+DOWNLOAD_GCC-$(GCC-PINFO-VERSION)=gcc-$(GCC-PINFO-VERSION).tar.bz2
+else
 DOWNLOAD_GCC-$(GCC-PINFO-VERSION)=gcc-core-$(GCC-PINFO-VERSION).tar.bz2
 DOWNLOAD_G++-$(GCC-PINFO-VERSION)=gcc-g++-$(GCC-PINFO-VERSION).tar.bz2
+endif
+
 DOWNLOAD_BASE=ftp://ftp.gnu.org/gnu/gcc/gcc-$(GCC-PINFO-VERSION)
 GCC_DIFF_CUR=$(CURDIR)/gcc-$(GCC-PINFO-VERSION).diff
 GCC_DIFF_NEXT=$(CURDIR)/gcc-$(GCC-PINFO-VERSION)-next.diff
@@ -27,7 +36,7 @@ gcc-pinfo-prepare:
 	if [ -d $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION) ]; then rm -rf $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION); fi
 	if [ -d $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION).ori ]; then rm -rf $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION).ori; fi
 	if [ -d $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build ]; then rm -rf $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build; fi
-	cd $(M_GCC_PINFO_TMPDIR); tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_GCC-$(GCC-PINFO-VERSION));  	tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_G++-$(GCC-PINFO-VERSION));  
+	-cd $(M_GCC_PINFO_TMPDIR); tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_GCC-$(GCC-PINFO-VERSION));  	tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_G++-$(GCC-PINFO-VERSION));  
 	$(if $(GHDL-GCC-$(GCC-PINFO-VERSION)) ,cd $(M_GCC_PINFO_TMPDIR); tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_GHDL); cp -r $(DOWNLOAD_GHDL_VERSION)/vhdl gcc-$(GCC-PINFO-VERSION)/gcc/; )
 	cd $(M_GCC_PINFO_TMPDIR); cp -r gcc-$(GCC-PINFO-VERSION) gcc-$(GCC-PINFO-VERSION).ori; \
 	find gcc-$(GCC-PINFO-VERSION).ori/gcc -type f    > gcc-$(GCC-PINFO-VERSION).ori.gcc.filelist; \
