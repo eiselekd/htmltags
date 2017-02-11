@@ -1,0 +1,26 @@
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.9.2.ori/gcc/cp/cfns.gperf gcc-4.9.2/gcc/cp/cfns.gperf
+--- gcc-4.9.2.ori/gcc/cp/cfns.gperf	2017-02-11 18:04:05.261503414 +0100
++++ gcc-4.9.2/gcc/cp/cfns.gperf	2017-02-11 19:40:48.464062180 +0100
+@@ -22,6 +22,9 @@
+ static unsigned int hash (const char *, unsigned int);
+ #ifdef __GNUC__
+ __inline
++#ifdef __GNUC_STDC_INLINE__
++__attribute__ ((__gnu_inline__))
++#endif
+ #endif
+ const char * libc_name_p (const char *, unsigned int);
+ %}
+diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.9.2.ori/gcc/cp/cfns.h gcc-4.9.2/gcc/cp/cfns.h
+--- gcc-4.9.2.ori/gcc/cp/cfns.h	2017-02-11 18:04:05.261503414 +0100
++++ gcc-4.9.2/gcc/cp/cfns.h	2017-02-11 19:41:14.619268336 +0100
+@@ -53,6 +53,9 @@
+ static unsigned int hash (const char *, unsigned int);
+ #ifdef __GNUC__
+ __inline
++#ifdef __GNUC_STDC_INLINE__
++__attribute__ ((__gnu_inline__))
++#endif
+ #endif
+ const char * libc_name_p (const char *, unsigned int);
+ /* maximum key range = 391, duplicates = 0 */

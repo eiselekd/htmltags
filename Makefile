@@ -17,6 +17,8 @@ DOWNLOAD_GCC-$(GCC-PINFO-VERSION)=gcc-core-$(GCC-PINFO-VERSION).tar.bz2
 DOWNLOAD_G++-$(GCC-PINFO-VERSION)=gcc-g++-$(GCC-PINFO-VERSION).tar.bz2
 endif
 
+
+
 DOWNLOAD_BASE=ftp://ftp.gnu.org/gnu/gcc/gcc-$(GCC-PINFO-VERSION)
 GCC_DIFF_CUR=$(CURDIR)/gcc-$(GCC-PINFO-VERSION).diff
 GCC_DIFF_NEXT=$(CURDIR)/gcc-$(GCC-PINFO-VERSION)-next.diff
@@ -60,6 +62,9 @@ gcc-pinfo-install-ex:
 	export LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu; make gcc-pinfo-install
 
 
+# libmpc-dev
+EXTRA_CONF_4.9.2= --with-gmp=/usr/lib/x86_64-linux-gnu/ --with-mpfr=/usr/lib/x86_64-linux-gnu/ --with-mpc=/usr/lib/x86_64-linux-gnu/ 
+
 gcc-pinfo-configure:
 	-mkdir $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build
 	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build; ../gcc-$(GCC-PINFO-VERSION)/configure \
@@ -67,8 +72,9 @@ gcc-pinfo-configure:
 	--target=x86_64-linux-gnu --host=x86_64-linux-gnu --build=x86_64-linux-gnu  \
 	--with-gnu-ld --disable-bootstrap --program-suffix=-pinfo --disable-multilib --enable-checking=release  \
         --disable-shared --disable-nls --disable-libstdcxx-pch \
+	$(EXTRA_CONF_$(GCC-PINFO-VERSION)) \
 	--with-sysroot=/ \
-	| tee _configure.out 
+	| tee _configure.out
 
 #
 gcc-pinfo-compile-install: gcc-pinfo-compile gcc-pinfo-install
@@ -152,3 +158,23 @@ gcc-pinfo-preapre-ubuntu-tar:
 #          --build=x86_64-linux-gnu
 #          --host=x86_64-linux-gnu
 #          --target=x86_64-linux-gnu
+
+
+##########################################################################
+#
+
+G-P-VERSION?=latest
+G-P-SRC=$(CURDIR)/../gcc
+
+g-configure:
+	-mkdir $(M_GCC_PINFO_TMPDIR)/gcc-$(G-P-VERSION)-build
+	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(G-P-VERSION)-build; $(G-P-SRC)/configure \
+        --prefix=/opt/gcc-$(GCC-PINFO-VERSION) --disable-nls --enable-languages=c,c++ \
+	--target=x86_64-linux-gnu --host=x86_64-linux-gnu --build=x86_64-linux-gnu  \
+	--with-gnu-ld --disable-bootstrap --program-suffix=-pinfo --disable-multilib --enable-checking=release  \
+        --disable-shared --disable-nls --disable-libstdcxx-pch \
+	$(EXTRA_CONF_$(GCC-PINFO-VERSION)) \
+	--with-sysroot=/ \
+	| tee _configure.out
+
+
