@@ -6,9 +6,9 @@ M_EXTDIR=tmp_ext
 # Create patched gcc-pinfo compiler
 #==================================
 #GCC-PINFO-VERSION?=4.2.1
-#GCC-PINFO-VERSION?=4.4.7
+GCC-PINFO-VERSION?=4.4.7
 #GCC-PINFO-VERSION?=4.4.7-ubuntu
-GCC-PINFO-VERSION?=4.9.2
+#GCC-PINFO-VERSION?=4.9.2
 GCC-PINFO-SINGLE-4.9.2=1
 ifeq ($(GCC-PINFO-SINGLE-$(GCC-PINFO-VERSION)),1)
 DOWNLOAD_GCC-$(GCC-PINFO-VERSION)=gcc-$(GCC-PINFO-VERSION).tar.bz2
@@ -38,7 +38,7 @@ gcc-pinfo-prepare:
 	if [ -d $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION) ]; then rm -rf $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION); fi
 	if [ -d $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION).ori ]; then rm -rf $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION).ori; fi
 	if [ -d $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build ]; then rm -rf $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build; fi
-	-cd $(M_GCC_PINFO_TMPDIR); tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_GCC-$(GCC-PINFO-VERSION));  	tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_G++-$(GCC-PINFO-VERSION));  
+	-cd $(M_GCC_PINFO_TMPDIR); tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_GCC-$(GCC-PINFO-VERSION));  	tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_G++-$(GCC-PINFO-VERSION));
 	$(if $(GHDL-GCC-$(GCC-PINFO-VERSION)) ,cd $(M_GCC_PINFO_TMPDIR); tar xvf $(CURDIR)/$(M_EXTDIR)/$(DOWNLOAD_GHDL); cp -r $(DOWNLOAD_GHDL_VERSION)/vhdl gcc-$(GCC-PINFO-VERSION)/gcc/; )
 	cd $(M_GCC_PINFO_TMPDIR); cp -r gcc-$(GCC-PINFO-VERSION) gcc-$(GCC-PINFO-VERSION).ori; \
 	find gcc-$(GCC-PINFO-VERSION).ori/gcc -type f    > gcc-$(GCC-PINFO-VERSION).ori.gcc.filelist; \
@@ -49,7 +49,7 @@ gcc-pinfo-prepare:
 	fi; \
 	if [ -f $(LIBCPP_DIFF_CUR) ]; then \
 		cat $(LIBCPP_DIFF_CUR) | patch -p1 -d gcc-$(GCC-PINFO-VERSION); \
-	fi; 
+	fi;
 
 gcc-pinfo-clean:
 	-rm -rf $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build/*
@@ -63,7 +63,7 @@ gcc-pinfo-install-ex:
 
 
 # libmpc-dev
-EXTRA_CONF_4.9.2= --with-gmp=/usr/lib/x86_64-linux-gnu/ --with-mpfr=/usr/lib/x86_64-linux-gnu/ --with-mpc=/usr/lib/x86_64-linux-gnu/ 
+EXTRA_CONF_4.9.2= --with-gmp=/usr/lib/x86_64-linux-gnu/ --with-mpfr=/usr/lib/x86_64-linux-gnu/ --with-mpc=/usr/lib/x86_64-linux-gnu/
 
 gcc-pinfo-configure:
 	-mkdir $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build
@@ -124,6 +124,10 @@ gcc-pinfo-preapre-ubuntu-tar:
 	bzip2 tmp_ext/gcc-g++-4.4.7-ubuntu.tar
 
 
+gcc-pinfo-tags:
+	-cd $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION); rm GPATH GRTAGS GTAGS
+	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION); find gcc include gcc libcpp  -type f | grep -e '.c$$\|.h$$' | gtags -i -f -
+
 #4.4.7
 #apt-get source gcc-4.4
 #cd gcc-4.4-4.4.7/
@@ -165,11 +169,15 @@ gcc-pinfo-preapre-ubuntu-tar:
 
 G-P-VERSION?=latest
 G-P-SRC=$(CURDIR)/../gcc
+# https://github.com/eiselekd/gcc.git
 
-g-configure:
+g:
+	cd ..; git clone https://github.com/eiselekd/gcc.git
+
+c_:
 	-mkdir $(M_GCC_PINFO_TMPDIR)/gcc-$(G-P-VERSION)-build
 	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(G-P-VERSION)-build; $(G-P-SRC)/configure \
-        --prefix=/opt/gcc-$(GCC-PINFO-VERSION) --disable-nls --enable-languages=c,c++ \
+        --prefix=/opt/gcc-$(G-P-VERSION) --disable-nls --enable-languages=c \
 	--target=x86_64-linux-gnu --host=x86_64-linux-gnu --build=x86_64-linux-gnu  \
 	--with-gnu-ld --disable-bootstrap --program-suffix=-pinfo --disable-multilib --enable-checking=release  \
         --disable-shared --disable-nls --disable-libstdcxx-pch \
@@ -177,4 +185,26 @@ g-configure:
 	--with-sysroot=/ \
 	| tee _configure.out
 
+c:
+	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(G-P-VERSION)-build; make all-gcc | tee _compile.out
 
+i:
+	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(G-P-VERSION)-build; make install-gcc| tee _install.out
+
+a: c_ c i
+
+ve:
+	export FLYCHECK_GENERIC_SRC=$(shell readlink -f $(G-P-SRC)); \
+	export FLYCHECK_GENERIC_BUILD=$(shell readlink -f $(M_GCC_PINFO_TMPDIR)/gcc-$(G-P-VERSION)-build); \
+	export FLYCHECK_GENERIC_CMD=all-gcc; \
+	emacs $(G-P-SRC) &
+
+tags:
+	-cd $(G-P-SRC); rm GPATH GRTAGS GTAGS
+	cd $(G-P-SRC); find gcc include gcc libcpp  -type f | grep -e '.c$$\|.h$$' | gtags -i -f -
+
+test_:
+	/opt/gcc-$(G-P-VERSION)/bin/gcc-pinfo --verbose -c t/m.c  
+
+test:
+	gdb --args /opt/gcc-$(G-P-VERSION)/libexec/gcc/x86_64-linux-gnu/7.0.1/cc1 -quiet -v -imultiarch x86_64-linux-gnu t/m.c -quiet -dumpbase m.c -mtune=generic -march=x86-64 -auxbase m -version -o /tmp/cctCZBFY.s

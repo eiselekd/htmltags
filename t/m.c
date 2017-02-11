@@ -1,5 +1,9 @@
-#include <stdio.h>
+#define v(a) a+2
 
-int func(void) {
-  return 0;
-}
+int a = v(1);
+
+
+
+
+
+
