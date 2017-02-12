@@ -1,6 +1,6 @@
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-aux-info.c gcc-4.4.7/gcc/c-aux-info.c
---- gcc-4.4.7.ori/gcc/c-aux-info.c	2017-02-12 08:56:28.237759140 +0100
-+++ gcc-4.4.7/gcc/c-aux-info.c	2017-02-12 08:56:28.589758406 +0100
+--- gcc-4.4.7.ori/gcc/c-aux-info.c	2017-02-12 09:19:44.003901290 +0100
++++ gcc-4.4.7/gcc/c-aux-info.c	2017-02-12 09:19:44.239891488 +0100
 @@ -298,13 +298,33 @@
     string onto the returned "seed".  */
  
@@ -236,8 +236,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-aux-info.c g
 +    }
 +}
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-decl.c gcc-4.4.7/gcc/c-decl.c
---- gcc-4.4.7.ori/gcc/c-decl.c	2017-02-12 08:56:28.233759148 +0100
-+++ gcc-4.4.7/gcc/c-decl.c	2017-02-12 08:56:28.593758396 +0100
+--- gcc-4.4.7.ori/gcc/c-decl.c	2017-02-12 09:19:43.999901456 +0100
++++ gcc-4.4.7/gcc/c-decl.c	2017-02-12 09:19:44.239891488 +0100
 @@ -64,6 +64,9 @@
  #include "pointer-set.h"
  #include "gimple.h"
@@ -534,8 +534,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-decl.c gcc-4
  	  specs->decl_attr = DECL_ATTRIBUTES (type);
  	  specs->typedef_p = true;
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-lex.c gcc-4.4.7/gcc/c-lex.c
---- gcc-4.4.7.ori/gcc/c-lex.c	2017-02-12 08:56:28.237759140 +0100
-+++ gcc-4.4.7/gcc/c-lex.c	2017-02-12 08:56:28.593758396 +0100
+--- gcc-4.4.7.ori/gcc/c-lex.c	2017-02-12 09:19:44.003901290 +0100
++++ gcc-4.4.7/gcc/c-lex.c	2017-02-12 09:19:44.239891488 +0100
 @@ -89,6 +89,35 @@
    cb->def_pragma = cb_def_pragma;
    cb->valid_pch = c_common_valid_pch;
@@ -748,8 +748,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-lex.c gcc-4.
  	{
  	  gcc_obstack_init (&str_ob);
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/common.opt gcc-4.4.7/gcc/common.opt
---- gcc-4.4.7.ori/gcc/common.opt	2017-02-12 08:56:28.233759148 +0100
-+++ gcc-4.4.7/gcc/common.opt	2017-02-12 08:56:28.593758396 +0100
+--- gcc-4.4.7.ori/gcc/common.opt	2017-02-12 09:19:43.999901456 +0100
++++ gcc-4.4.7/gcc/common.opt	2017-02-12 09:19:44.239891488 +0100
 @@ -240,12 +240,52 @@
  aux-info=
  Common Joined
@@ -804,8 +804,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/common.opt gcc
  Common Joined
  -d<letters>	Enable dumps from specific passes of the compiler
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/configure gcc-4.4.7/gcc/configure
---- gcc-4.4.7.ori/gcc/configure	2017-02-12 08:56:28.249759115 +0100
-+++ gcc-4.4.7/gcc/configure	2017-02-12 08:56:28.597758388 +0100
+--- gcc-4.4.7.ori/gcc/configure	2017-02-12 09:19:44.015900792 +0100
++++ gcc-4.4.7/gcc/configure	2017-02-12 09:19:44.243891322 +0100
 @@ -8586,7 +8586,7 @@
  *** Info documentation will not be built." >&2;}
    BUILD_INFO=
@@ -816,8 +816,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/configure gcc-
  
  
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c.opt gcc-4.4.7/gcc/c.opt
---- gcc-4.4.7.ori/gcc/c.opt	2017-02-12 08:56:28.181759257 +0100
-+++ gcc-4.4.7/gcc/c.opt	2017-02-12 08:56:28.597758388 +0100
+--- gcc-4.4.7.ori/gcc/c.opt	2017-02-12 09:19:43.951903450 +0100
++++ gcc-4.4.7/gcc/c.opt	2017-02-12 09:19:44.247891156 +0100
 @@ -49,6 +49,10 @@
  C ObjC C++ ObjC++
  Do not discard comments in macro expansions
@@ -852,8 +852,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c.opt gcc-4.4.
  ObjC ObjC++
  Used in Fix-and-Continue mode to indicate that object files may be swapped in at runtime
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-opts.c gcc-4.4.7/gcc/c-opts.c
---- gcc-4.4.7.ori/gcc/c-opts.c	2017-02-12 08:56:28.237759140 +0100
-+++ gcc-4.4.7/gcc/c-opts.c	2017-02-12 08:56:28.597758388 +0100
+--- gcc-4.4.7.ori/gcc/c-opts.c	2017-02-12 09:19:44.003901290 +0100
++++ gcc-4.4.7/gcc/c-opts.c	2017-02-12 09:19:44.247891156 +0100
 @@ -291,11 +291,16 @@
        cpp_opts->discard_comments = 0;
        break;
@@ -883,8 +883,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-opts.c gcc-4
        flag_replace_objc_classes = value;
        break;
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/cp/Make-lang.in gcc-4.4.7/gcc/cp/Make-lang.in
---- gcc-4.4.7.ori/gcc/cp/Make-lang.in	2017-02-12 08:56:28.305758997 +0100
-+++ gcc-4.4.7/gcc/cp/Make-lang.in	2017-02-12 08:56:28.597758388 +0100
+--- gcc-4.4.7.ori/gcc/cp/Make-lang.in	2017-02-12 09:19:44.063898798 +0100
++++ gcc-4.4.7/gcc/cp/Make-lang.in	2017-02-12 09:19:44.247891156 +0100
 @@ -73,7 +73,7 @@
  CXX_C_OBJS = attribs.o c-common.o c-format.o c-pragma.o c-semantics.o c-lex.o \
  	c-dump.o $(CXX_TARGET_OBJS) c-pretty-print.o c-opts.o c-pch.o \
@@ -895,8 +895,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/cp/Make-lang.i
  # Language-specific object files for C++ and Objective C++.
  CXX_AND_OBJCXX_OBJS = cp/call.o cp/decl.o cp/expr.o cp/pt.o cp/typeck2.o \
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/cp/parser.c gcc-4.4.7/gcc/cp/parser.c
---- gcc-4.4.7.ori/gcc/cp/parser.c	2017-02-12 08:56:28.305758997 +0100
-+++ gcc-4.4.7/gcc/cp/parser.c	2017-02-12 08:56:28.601758380 +0100
+--- gcc-4.4.7.ori/gcc/cp/parser.c	2017-02-12 09:19:44.063898798 +0100
++++ gcc-4.4.7/gcc/cp/parser.c	2017-02-12 09:19:44.251890990 +0100
 @@ -401,7 +401,7 @@
  
     /* Get a new token from the preprocessor.  */
@@ -908,7 +908,7 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/cp/parser.c gc
    token->pragma_kind = PRAGMA_NONE;
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-parse-info.c gcc-4.4.7/gcc/c-parse-info.c
 --- gcc-4.4.7.ori/gcc/c-parse-info.c	1970-01-01 01:00:00.000000000 +0100
-+++ gcc-4.4.7/gcc/c-parse-info.c	2017-02-12 08:56:28.609758363 +0100
++++ gcc-4.4.7/gcc/c-parse-info.c	2017-02-12 09:19:44.251890990 +0100
 @@ -0,0 +1,218 @@
 +#include "config.h"
 +#include "system.h"
@@ -1129,8 +1129,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-parse-info.c
 +
 +
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-parser.c gcc-4.4.7/gcc/c-parser.c
---- gcc-4.4.7.ori/gcc/c-parser.c	2017-02-12 08:56:28.237759140 +0100
-+++ gcc-4.4.7/gcc/c-parser.c	2017-02-12 08:56:28.613758355 +0100
+--- gcc-4.4.7.ori/gcc/c-parser.c	2017-02-12 09:19:44.003901290 +0100
++++ gcc-4.4.7/gcc/c-parser.c	2017-02-12 09:19:44.255890823 +0100
 @@ -58,6 +58,10 @@
  #include "target.h"
  #include "cgraph.h"
@@ -1652,8 +1652,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-parser.c gcc
  	  break;
  	case CPP_PLUS_PLUS:
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-ppoutput.c gcc-4.4.7/gcc/c-ppoutput.c
---- gcc-4.4.7.ori/gcc/c-ppoutput.c	2017-02-12 08:56:28.273759064 +0100
-+++ gcc-4.4.7/gcc/c-ppoutput.c	2017-02-12 08:56:28.613758355 +0100
+--- gcc-4.4.7.ori/gcc/c-ppoutput.c	2017-02-12 09:19:44.035899961 +0100
++++ gcc-4.4.7/gcc/c-ppoutput.c	2017-02-12 09:19:44.255890823 +0100
 @@ -26,18 +26,13 @@
  #include "tree.h"
  #include "c-common.h"		/* For flags.  */
@@ -1837,7 +1837,7 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-ppoutput.c g
 +
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-ppoutput.h gcc-4.4.7/gcc/c-ppoutput.h
 --- gcc-4.4.7.ori/gcc/c-ppoutput.h	1970-01-01 01:00:00.000000000 +0100
-+++ gcc-4.4.7/gcc/c-ppoutput.h	2017-02-12 08:56:28.613758355 +0100
++++ gcc-4.4.7/gcc/c-ppoutput.h	2017-02-12 09:19:44.255890823 +0100
 @@ -0,0 +1,39 @@
 +#ifndef PP_OUT_P_H
 +#define PP_OUT_P_H
@@ -1879,8 +1879,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-ppoutput.h g
 +
 +#endif
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-pragma.h gcc-4.4.7/gcc/c-pragma.h
---- gcc-4.4.7.ori/gcc/c-pragma.h	2017-02-12 08:56:28.237759140 +0100
-+++ gcc-4.4.7/gcc/c-pragma.h	2017-02-12 08:56:28.613758355 +0100
+--- gcc-4.4.7.ori/gcc/c-pragma.h	2017-02-12 09:19:43.999901456 +0100
++++ gcc-4.4.7/gcc/c-pragma.h	2017-02-12 09:19:44.255890823 +0100
 @@ -126,6 +126,7 @@
     convenient location to declare this function for c-lex, after
     having enum cpp_ttype declared.  */
@@ -1890,8 +1890,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-pragma.h gcc
  
  extern void c_pp_lookup_pragma (unsigned int, const char **, const char **);
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-tree.h gcc-4.4.7/gcc/c-tree.h
---- gcc-4.4.7.ori/gcc/c-tree.h	2017-02-12 08:56:28.237759140 +0100
-+++ gcc-4.4.7/gcc/c-tree.h	2017-02-12 08:56:28.613758355 +0100
+--- gcc-4.4.7.ori/gcc/c-tree.h	2017-02-12 09:19:44.003901290 +0100
++++ gcc-4.4.7/gcc/c-tree.h	2017-02-12 09:19:44.255890823 +0100
 @@ -283,10 +283,14 @@
    BOOL_BITFIELD const_p : 1;
    /* Whether "volatile" was specified.  */
@@ -1995,8 +1995,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-tree.h gcc-4
  extern struct c_expr c_expr_sizeof_expr (struct c_expr);
  extern struct c_expr c_expr_sizeof_type (struct c_type_name *);
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-typeck.c gcc-4.4.7/gcc/c-typeck.c
---- gcc-4.4.7.ori/gcc/c-typeck.c	2017-02-12 08:56:28.185759249 +0100
-+++ gcc-4.4.7/gcc/c-typeck.c	2017-02-12 08:56:28.613758355 +0100
+--- gcc-4.4.7.ori/gcc/c-typeck.c	2017-02-12 09:19:43.951903450 +0100
++++ gcc-4.4.7/gcc/c-typeck.c	2017-02-12 09:19:44.255890823 +0100
 @@ -44,6 +44,7 @@
  #include "tree-iterator.h"
  #include "gimple.h"
@@ -2071,8 +2071,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/c-typeck.c gcc
  }
  
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/flags.h gcc-4.4.7/gcc/flags.h
---- gcc-4.4.7.ori/gcc/flags.h	2017-02-12 08:56:28.257759098 +0100
-+++ gcc-4.4.7/gcc/flags.h	2017-02-12 08:56:28.613758355 +0100
+--- gcc-4.4.7.ori/gcc/flags.h	2017-02-12 09:19:44.019900625 +0100
++++ gcc-4.4.7/gcc/flags.h	2017-02-12 09:19:44.255890823 +0100
 @@ -172,6 +172,12 @@
  
  extern int flag_gen_aux_info;
@@ -2087,8 +2087,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/flags.h gcc-4.
     notes in debugging dumps.  */
  
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/gcc.c gcc-4.4.7/gcc/gcc.c
---- gcc-4.4.7.ori/gcc/gcc.c	2017-02-12 08:56:28.233759148 +0100
-+++ gcc-4.4.7/gcc/gcc.c	2017-02-12 08:56:28.613758355 +0100
+--- gcc-4.4.7.ori/gcc/gcc.c	2017-02-12 09:19:43.999901456 +0100
++++ gcc-4.4.7/gcc/gcc.c	2017-02-12 09:19:44.259890657 +0100
 @@ -797,8 +797,8 @@
     therefore no dependency entry, confuses make into thinking a .o
     file that happens to exist is up-to-date.  */
@@ -2118,7 +2118,7 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/gcc.c gcc-4.4.
     {"--define-macro", "-D", "aj"},
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/gcc.pre gcc-4.4.7/gcc/gcc.pre
 --- gcc-4.4.7.ori/gcc/gcc.pre	1970-01-01 01:00:00.000000000 +0100
-+++ gcc-4.4.7/gcc/gcc.pre	2017-02-12 08:56:28.613758355 +0100
++++ gcc-4.4.7/gcc/gcc.pre	2017-02-12 09:19:44.259890657 +0100
 @@ -0,0 +1,175 @@
 +#!/bin/bash
 +#
@@ -2297,7 +2297,7 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/gcc.pre gcc-4.
 +
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/gcc.pre.sh gcc-4.4.7/gcc/gcc.pre.sh
 --- gcc-4.4.7.ori/gcc/gcc.pre.sh	1970-01-01 01:00:00.000000000 +0100
-+++ gcc-4.4.7/gcc/gcc.pre.sh	2017-02-12 08:56:28.613758355 +0100
++++ gcc-4.4.7/gcc/gcc.pre.sh	2017-02-12 09:19:44.259890657 +0100
 @@ -0,0 +1,50 @@
 +#!/bin/bash
 +
@@ -2350,8 +2350,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/gcc.pre.sh gcc
 +fi
 +
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/genmodes.c gcc-4.4.7/gcc/genmodes.c
---- gcc-4.4.7.ori/gcc/genmodes.c	2017-02-12 08:56:28.297759014 +0100
-+++ gcc-4.4.7/gcc/genmodes.c	2017-02-12 08:56:28.613758355 +0100
+--- gcc-4.4.7.ori/gcc/genmodes.c	2017-02-12 09:19:44.055899130 +0100
++++ gcc-4.4.7/gcc/genmodes.c	2017-02-12 09:19:44.259890657 +0100
 @@ -837,7 +837,7 @@
  
  #define tagged_printf(FMT, ARG, TAG) do {		\
@@ -2362,8 +2362,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/genmodes.c gcc
  
  #define print_decl(TYPE, NAME, ASIZE) \
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/gimplify.c gcc-4.4.7/gcc/gimplify.c
---- gcc-4.4.7.ori/gcc/gimplify.c	2017-02-12 08:56:28.261759089 +0100
-+++ gcc-4.4.7/gcc/gimplify.c	2017-02-12 08:56:28.617758347 +0100
+--- gcc-4.4.7.ori/gcc/gimplify.c	2017-02-12 09:19:44.023900459 +0100
++++ gcc-4.4.7/gcc/gimplify.c	2017-02-12 09:19:44.259890657 +0100
 @@ -52,7 +52,7 @@
  #include "splay-tree.h"
  #include "vec.h"
@@ -2374,8 +2374,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/gimplify.c gcc
  enum gimplify_omp_var_data
  {
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/input.h gcc-4.4.7/gcc/input.h
---- gcc-4.4.7.ori/gcc/input.h	2017-02-12 08:56:28.253759107 +0100
-+++ gcc-4.4.7/gcc/input.h	2017-02-12 08:56:28.617758347 +0100
+--- gcc-4.4.7.ori/gcc/input.h	2017-02-12 09:19:44.015900792 +0100
++++ gcc-4.4.7/gcc/input.h	2017-02-12 09:19:44.259890657 +0100
 @@ -56,6 +56,7 @@
  extern const char *main_input_filename;
  
@@ -2385,8 +2385,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/input.h gcc-4.
  #define LOCATION_FILE(LOC) ((expand_location (LOC)).file)
  #define LOCATION_LINE(LOC) ((expand_location (LOC)).line)
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/Makefile.in gcc-4.4.7/gcc/Makefile.in
---- gcc-4.4.7.ori/gcc/Makefile.in	2017-02-12 08:56:28.253759107 +0100
-+++ gcc-4.4.7/gcc/Makefile.in	2017-02-12 08:56:28.617758347 +0100
+--- gcc-4.4.7.ori/gcc/Makefile.in	2017-02-12 09:19:44.015900792 +0100
++++ gcc-4.4.7/gcc/Makefile.in	2017-02-12 09:19:44.263890492 +0100
 @@ -682,6 +682,12 @@
  # A list of all the language-specific executables.
  COMPILERS = cc1$(exeext) @all_compilers@
@@ -2444,8 +2444,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/Makefile.in gc
  	  fi; \
  	done
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/opts.c gcc-4.4.7/gcc/opts.c
---- gcc-4.4.7.ori/gcc/opts.c	2017-02-12 08:56:28.241759131 +0100
-+++ gcc-4.4.7/gcc/opts.c	2017-02-12 08:56:28.617758347 +0100
+--- gcc-4.4.7.ori/gcc/opts.c	2017-02-12 09:19:44.007901124 +0100
++++ gcc-4.4.7/gcc/opts.c	2017-02-12 09:19:44.263890492 +0100
 @@ -1644,12 +1644,47 @@
        warn_unused = value;
        break;
@@ -2495,8 +2495,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/opts.c gcc-4.4
        aux_base_name = arg;
        break;
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/toplev.c gcc-4.4.7/gcc/toplev.c
---- gcc-4.4.7.ori/gcc/toplev.c	2017-02-12 08:56:28.253759107 +0100
-+++ gcc-4.4.7/gcc/toplev.c	2017-02-12 08:56:28.617758347 +0100
+--- gcc-4.4.7.ori/gcc/toplev.c	2017-02-12 09:19:44.015900792 +0100
++++ gcc-4.4.7/gcc/toplev.c	2017-02-12 09:20:11.342765750 +0100
 @@ -84,6 +84,7 @@
  #include "tree-mudflap.h"
  #include "tree-pass.h"
@@ -2544,6 +2544,15 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/toplev.c gcc-4
  
  /* Nonzero if we are compiling code for a shared library, zero for
     executable.  */
+@@ -527,7 +539,7 @@
+    for floor_log2 and exact_log2; see toplev.h.  That construct, however,
+    conflicts with the ISO C++ One Definition Rule.   */
+ 
+-#if GCC_VERSION < 3004 || !defined (__cplusplus)
++#if GCC_VERSION < 3004
+ 
+ /* Given X, an unsigned number, return the largest int Y such that 2**Y <= X.
+    If X is 0, return -1.  */
 @@ -991,6 +1003,8 @@
       functions in this compilation unit were deferred.  */
    coverage_finish ();
@@ -2625,8 +2634,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/toplev.c gcc-4
    if (warningcount || errorcount) 
      print_ignored_options ();
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/toplev.h gcc-4.4.7/gcc/toplev.h
---- gcc-4.4.7.ori/gcc/toplev.h	2017-02-12 08:56:28.253759107 +0100
-+++ gcc-4.4.7/gcc/toplev.h	2017-02-12 08:56:28.617758347 +0100
+--- gcc-4.4.7.ori/gcc/toplev.h	2017-02-12 09:19:44.019900625 +0100
++++ gcc-4.4.7/gcc/toplev.h	2017-02-12 09:19:57.799328287 +0100
 @@ -117,10 +117,22 @@
  extern const char *dump_base_name;
  extern const char *aux_base_name;
@@ -2650,9 +2659,25 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/toplev.h gcc-4
  /* True if the user has tagged the function with the 'section'
     attribute.  */
  
+@@ -186,13 +198,13 @@
+ #  define CTZ_HWI __builtin_ctz
+ # endif
+ 
+-extern inline int
++static inline int
+ floor_log2 (unsigned HOST_WIDE_INT x)
+ {
+   return x ? HOST_BITS_PER_WIDE_INT - 1 - (int) CLZ_HWI (x) : -1;
+ }
+ 
+-extern inline int
++static inline int
+ exact_log2 (unsigned HOST_WIDE_INT x)
+ {
+   return x == (x & -x) && x ? (int) CTZ_HWI (x) : -1;
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/tree.c gcc-4.4.7/gcc/tree.c
---- gcc-4.4.7.ori/gcc/tree.c	2017-02-12 08:56:28.257759098 +0100
-+++ gcc-4.4.7/gcc/tree.c	2017-02-12 08:56:28.617758347 +0100
+--- gcc-4.4.7.ori/gcc/tree.c	2017-02-12 09:19:44.019900625 +0100
++++ gcc-4.4.7/gcc/tree.c	2017-02-12 09:19:44.263890492 +0100
 @@ -694,6 +694,8 @@
  
        /* We have not yet computed the alias set for this type.  */
@@ -2663,8 +2688,8 @@ diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/tree.c gcc-4.4
  
      case tcc_constant:
 diff -Naurb '--exclude=*.v87' '--exclude=*.v93' gcc-4.4.7.ori/gcc/tree.h gcc-4.4.7/gcc/tree.h
---- gcc-4.4.7.ori/gcc/tree.h	2017-02-12 08:56:28.249759115 +0100
-+++ gcc-4.4.7/gcc/tree.h	2017-02-12 08:56:28.617758347 +0100
+--- gcc-4.4.7.ori/gcc/tree.h	2017-02-12 09:19:44.015900792 +0100
++++ gcc-4.4.7/gcc/tree.h	2017-02-12 09:19:44.267890325 +0100
 @@ -373,6 +373,8 @@
    unsigned saturating_flag : 1;
    unsigned default_def_flag : 1;
