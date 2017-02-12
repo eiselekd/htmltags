@@ -65,15 +65,16 @@ gcc-pinfo-install-ex:
 # libmpc-dev
 EXTRA_CONF_4.9.2= --with-gmp=/usr/lib/x86_64-linux-gnu/ --with-mpfr=/usr/lib/x86_64-linux-gnu/ --with-mpc=/usr/lib/x86_64-linux-gnu/
 
+# ,c++
+#	--with-sysroot=/ 
 gcc-pinfo-configure:
 	-mkdir $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build
 	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(GCC-PINFO-VERSION)-build; ../gcc-$(GCC-PINFO-VERSION)/configure \
-        --prefix=/opt/gcc-$(GCC-PINFO-VERSION) --disable-nls --enable-languages=c,c++ \
+        --prefix=/opt/gcc-$(GCC-PINFO-VERSION) --disable-nls --enable-languages=c \
 	--target=x86_64-linux-gnu --host=x86_64-linux-gnu --build=x86_64-linux-gnu  \
-	--with-gnu-ld --disable-bootstrap --program-suffix=-pinfo --disable-multilib --enable-checking=release  \
-        --disable-shared --disable-nls --disable-libstdcxx-pch \
+	--disable-bootstrap --program-suffix=-pinfo --disable-multilib --enable-checking=release  \
+        --disable-shared --disable-nls --disable-libstdcxx-pch --disable-libgomp \
 	$(EXTRA_CONF_$(GCC-PINFO-VERSION)) \
-	--with-sysroot=/ \
 	| tee _configure.out
 
 #
@@ -179,7 +180,7 @@ c_:
 	cd $(M_GCC_PINFO_TMPDIR)/gcc-$(G-P-VERSION)-build; $(G-P-SRC)/configure \
         --prefix=/opt/gcc-$(G-P-VERSION) --disable-nls --enable-languages=c \
 	--target=x86_64-linux-gnu --host=x86_64-linux-gnu --build=x86_64-linux-gnu  \
-	--with-gnu-ld --disable-bootstrap --program-suffix=-pinfo --disable-multilib --enable-checking=release  \
+	--disable-bootstrap --program-suffix=-pinfo --disable-multilib --enable-checking=release  \
         --disable-shared --disable-nls --disable-libstdcxx-pch \
 	$(EXTRA_CONF_$(GCC-PINFO-VERSION)) \
 	--with-sysroot=/ \
