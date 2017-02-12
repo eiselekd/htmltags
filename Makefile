@@ -206,5 +206,8 @@ tags:
 test_:
 	/opt/gcc-$(G-P-VERSION)/bin/gcc-pinfo --verbose -c t/m.c  
 
+test_2:
+	/opt/gcc-$(G-P-VERSION)/bin/gcc-pinfo -c t/m0.c  
+
 test:
 	gdb --args /opt/gcc-$(G-P-VERSION)/libexec/gcc/x86_64-linux-gnu/7.0.1/cc1 -quiet -v -imultiarch x86_64-linux-gnu t/m.c -quiet -dumpbase m.c -mtune=generic -march=x86-64 -auxbase m -version -o /tmp/cctCZBFY.s
