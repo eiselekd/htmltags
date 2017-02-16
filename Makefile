@@ -5,7 +5,7 @@ M_EXTDIR=tmp_ext
 #==================================
 # Create patched gcc-pinfo compiler
 #==================================
-#GCC-PINFO-VERSION?=4.2.1
+#GCC-PINFO-VERSION?=4.2.1 
 GCC-PINFO-VERSION?=4.4.7
 #GCC-PINFO-VERSION?=4.4.7-ubuntu
 #GCC-PINFO-VERSION?=4.9.2
